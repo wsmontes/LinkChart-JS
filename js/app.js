@@ -114,6 +114,9 @@ function loadSampleData(chart) {
     const urlParams = new URLSearchParams(window.location.search);
     const dataType = urlParams.get('data') || 'default';
     
+    // First ensure we have entity types before loading sample data
+    const uiManager = new UiManager(chart);
+    
     if (dataType === 'issues') {
         const sampleData = dataManager.createIssueSampleData();
         chart.updateData(sampleData);
@@ -139,6 +142,9 @@ function loadSampleData(chart) {
         chart.updateData(sampleData);
         chart.fitView();
     }
+    
+    // Update the UI to show the entity types
+    uiManager.updateEntityPalette();
 }
 
 // Add change tracking to ChartData

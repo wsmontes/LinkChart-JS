@@ -17,7 +17,25 @@ class UiManager {
         this.initChartControls();
         this.initEntityModal();
         this.setupEntitySelectionHandler();
+        
+        // Check if we have entity types, if not, create default ones
+        if (this.chart.data.entityTypes.length === 0) {
+            this.createDefaultEntityTypes();
+        }
+        
         this.updateEntityPalette();
+    }
+    
+    /**
+     * Create default entity types if none exist
+     */
+    createDefaultEntityTypes() {
+        // Add common entity types
+        this.chart.data.addEntityType(new EntityType('person', 'Person', 'bi-person', '#ff7675'));
+        this.chart.data.addEntityType(new EntityType('organization', 'Organization', 'bi-building', '#74b9ff'));
+        this.chart.data.addEntityType(new EntityType('location', 'Location', 'bi-geo-alt', '#55efc4'));
+        this.chart.data.addEntityType(new EntityType('event', 'Event', 'bi-calendar-event', '#fdcb6e'));
+        this.chart.data.addEntityType(new EntityType('custom', 'Custom', 'bi-box', '#a29bfe'));
     }
 
     initDragAndDrop() {
@@ -254,19 +272,13 @@ class UiManager {
         const entityTypes = this.chart.data.entityTypes;
         const entityPalette = document.querySelector('.entity-types');
         
-        // Clear existing custom entity types
-        const existingCustomTypes = entityPalette.querySelectorAll('.custom-entity-type');
-        existingCustomTypes.forEach(element => element.remove());
+        // Clear all existing entity types
+        entityPalette.innerHTML = '';
         
-        // Add all dynamic entity types
+        // Add all entity types dynamically
         entityTypes.forEach(type => {
-            // Skip built-in types that are already in the HTML
-            if (['person', 'organization', 'location', 'event', 'custom'].includes(type.id)) {
-                return;
-            }
-            
             const typeElement = document.createElement('div');
-            typeElement.className = 'entity-type custom-entity-type';
+            typeElement.className = 'entity-type';
             typeElement.setAttribute('draggable', 'true');
             typeElement.setAttribute('data-type', type.id);
             

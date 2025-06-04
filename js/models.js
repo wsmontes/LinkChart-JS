@@ -123,13 +123,7 @@ class ChartData {
     constructor() {
         this.entities = [];
         this.relationships = [];
-        this.entityTypes = [
-            new EntityType('person', 'Person', 'bi-person', '#ff7675'),
-            new EntityType('organization', 'Organization', 'bi-building', '#74b9ff'),
-            new EntityType('location', 'Location', 'bi-geo-alt', '#55efc4'),
-            new EntityType('event', 'Event', 'bi-calendar-event', '#fdcb6e'),
-            new EntityType('custom', 'Custom', 'bi-box', '#a29bfe')
-        ];
+        this.entityTypes = [];
     }
 
     addEntity(entity) {
@@ -175,6 +169,16 @@ class ChartData {
         }
 
         return entityType;
+    }
+
+    /**
+     * Ensures there's at least one entity type, creating default types if needed
+     */
+    ensureEntityTypes() {
+        if (this.entityTypes.length === 0) {
+            // Add default entity types
+            this.addEntityType(new EntityType('default', 'Default', 'bi-box', '#3498db'));
+        }
     }
 
     getEntityTypeById(id) {
@@ -364,6 +368,60 @@ class ChartData {
     }
     
     /**
+     * Import entities from CSV with automatic type detection
+     * @param {Array} csvData - CSV data rows
+     * @param {Object} options - Import options including typeColumn
+     */
+    importEntitiesWithTypes(csvData, options) {
+        const {
+            idColumn,
+            nameColumn,
+            typeColumn,
+            includedColumns
+        } = options;
+        
+        const createdEntities = [];
+        
+        // Create entity types if needed
+        if (typeColumn) {
+            this.createEntityTypesFromColumn(csvData, typeColumn);
+        } else {
+            // Ensure we have at least one entity type
+            this.ensureEntityTypes();
+        }
+        
+        // Process each row of the CSV
+        csvData.forEach(row => {
+            const id = idColumn ? row[idColumn] : null;
+            const name = row[nameColumn] || 'Unnamed Entity';
+            
+            // Determine entity type from the type column or use default
+            let entityType = this.entityTypes.length > 0 ? this.entityTypes[0].id : 'default';
+            if (typeColumn && row[typeColumn]) {
+                const typeValue = row[typeColumn].toString().trim();
+                const typeId = typeValue.toLowerCase().replace(/[^a-z0-9]/g, '-');
+                
+                // Check if this type exists
+                if (this.entityTypes.some(et => et.id === typeId)) {
+                    entityType = typeId;
+                }
+            }
+            
+            // Create a new entity
+            const entity = new Entity(id, entityType, name);
+            
+            // Add all included columns as properties
+            entity.setPropertiesFromCsv(row, includedColumns);
+            
+            // Add entity to chart data
+            this.addEntity(entity);
+            createdEntities.push(entity);
+        });
+        
+        return createdEntities;
+    }
+    
+    /**
      * Create automatic entity types based on a type column
      * @param {Array} csvData - Array of objects representing CSV rows
      * @param {string} typeColumn - Column containing entity type information
@@ -382,7 +440,7 @@ class ChartData {
         
         // Create entity types for each unique value
         const colors = ['#ff7675', '#74b9ff', '#55efc4', '#fdcb6e', '#a29bfe', '#fab1a0', '#81ecec', '#dfe6e9'];
-        const icons = ['bi-file-text', 'bi-card-heading', 'bi-card-text', 'bi-check2-square', 'bi-calendar-event'];
+        const icons = ['bi-file-text', 'bi-card-heading', 'bi-card-text', 'bi-check2-square', 'bi-calendar-event', 'bi-person', 'bi-building', 'bi-geo-alt'];
         
         let colorIndex = 0;
         let iconIndex = 0;
@@ -415,56 +473,5 @@ class ChartData {
         });
         
         return createdTypes;
-    }
-    
-    /**
-     * Import entities from CSV with automatic type detection
-     * @param {Array} csvData - CSV data rows
-     * @param {Object} options - Import options including typeColumn
-     */
-    importEntitiesWithTypes(csvData, options) {
-        const {
-            idColumn,
-            nameColumn,
-            typeColumn,
-            includedColumns
-        } = options;
-        
-        const createdEntities = [];
-        
-        // Create entity types if needed
-        if (typeColumn) {
-            this.createEntityTypesFromColumn(csvData, typeColumn);
-        }
-        
-        // Process each row of the CSV
-        csvData.forEach(row => {
-            const id = idColumn ? row[idColumn] : null;
-            const name = row[nameColumn] || 'Unnamed Entity';
-            
-            // Determine entity type from the type column or use default
-            let entityType = 'custom';
-            if (typeColumn && row[typeColumn]) {
-                const typeValue = row[typeColumn].toString().trim();
-                const typeId = typeValue.toLowerCase().replace(/[^a-z0-9]/g, '-');
-                
-                // Check if this type exists
-                if (this.entityTypes.some(et => et.id === typeId)) {
-                    entityType = typeId;
-                }
-            }
-            
-            // Create a new entity
-            const entity = new Entity(id, entityType, name);
-            
-            // Add all included columns as properties
-            entity.setPropertiesFromCsv(row, includedColumns);
-            
-            // Add entity to chart data
-            this.addEntity(entity);
-            createdEntities.push(entity);
-        });
-        
-        return createdEntities;
     }
 }

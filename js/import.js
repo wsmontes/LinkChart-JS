@@ -206,6 +206,11 @@ class CsvImporter {
         document.getElementById(`import-step-${step}`).style.display = 'block';
         document.getElementById(`step-${step}-buttons`).style.display = 'block';
         
+        // If going to step 2, update entity type dropdown
+        if (step === 2) {
+            this.initEntityTypeDropdown();
+        }
+        
         this.currentStep = step;
     }
     
@@ -594,6 +599,28 @@ class CsvImporter {
         }
     }
     
+    initEntityTypeDropdown() {
+        const entityTypeSelect = document.getElementById('entity-import-type');
+        if (!entityTypeSelect) return;
+        
+        // Clear existing options
+        entityTypeSelect.innerHTML = '';
+        
+        // Create an option for each entity type
+        this.chart.data.entityTypes.forEach(type => {
+            const option = document.createElement('option');
+            option.value = type.id;
+            option.textContent = type.name;
+            entityTypeSelect.appendChild(option);
+        });
+        
+        // Add the "Create New Type" option
+        const createOption = document.createElement('option');
+        createOption.value = 'new-type';
+        createOption.textContent = 'Create New Type...';
+        entityTypeSelect.appendChild(createOption);
+    }
+    
     async importData() {
         if (!this.csvData || this.csvData.length === 0) {
             alert('No CSV data to import');
@@ -625,7 +652,7 @@ class CsvImporter {
         else {
             // Original entity creation code
             const entityTypeSelect = document.getElementById('entity-import-type');
-            const selectedType = entityTypeSelect.value;
+            let selectedType = entityTypeSelect.value;
             
             if (selectedType === 'new-type') {
                 const typeName = document.getElementById('new-entity-type-name').value.trim();
@@ -662,6 +689,12 @@ class CsvImporter {
                     }
                 );
             } else {
+                // If there are no entity types yet, create a default one
+                if (this.chart.data.entityTypes.length === 0) {
+                    this.chart.data.addEntityType(new EntityType('default', 'Default', 'bi-box', '#3498db'));
+                    selectedType = 'default';
+                }
+                
                 // Import using the selected existing type
                 importedEntities = this.chart.data.importEntitiesFromCsv(
                     this.csvData,

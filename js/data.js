@@ -94,6 +94,12 @@ class DataManager {
     createSampleData() {
         const chartData = new ChartData();
         
+        // Add entity types
+        chartData.addEntityType(new EntityType('person', 'Person', 'bi-person', '#ff7675'));
+        chartData.addEntityType(new EntityType('organization', 'Organization', 'bi-building', '#74b9ff'));
+        chartData.addEntityType(new EntityType('location', 'Location', 'bi-geo-alt', '#55efc4'));
+        chartData.addEntityType(new EntityType('event', 'Event', 'bi-calendar-event', '#fdcb6e'));
+        
         // Add some entities
         const john = chartData.addEntity(new Entity(null, 'person', 'John Smith', 'CEO of Acme Corp'));
         const alice = chartData.addEntity(new Entity(null, 'person', 'Alice Johnson', 'CFO of Acme Corp'));
