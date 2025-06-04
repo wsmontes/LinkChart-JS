@@ -1,0 +1,497 @@
+/* Main application styles */
+:root {
+    --header-height: 60px;
+    --footer-height: 30px;
+    --sidebar-width: 280px;
+    --primary-color: #3498db;
+    --secondary-color: #2c3e50;
+    --background-color: #f5f5f5;
+    --entity-person: #ff7675;
+    --entity-organization: #74b9ff;
+    --entity-location: #55efc4;
+    --entity-event: #fdcb6e;
+    --entity-custom: #a29bfe;
+}
+
+body, html {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: var(--background-color);
+}
+
+.app-container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+}
+
+.app-header {
+    height: var(--header-height);
+    background-color: var(--secondary-color);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.logo {
+    font-size: 1.5rem;
+    font-weight: bold;
+}
+
+.toolbar {
+    display: flex;
+    gap: 10px;
+}
+
+.main-content {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+.sidebar {
+    width: var(--sidebar-width);
+    background-color: white;
+    border-right: 1px solid #ddd;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+}
+
+.entity-palette, .properties-panel {
+    padding: 15px;
+    border-bottom: 1px solid #eee;
+}
+
+.entity-types {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 10px;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.entity-type {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    background-color: #f8f9fa;
+    user-select: none;
+}
+
+.entity-type:hover {
+    background-color: #e9ecef;
+}
+
+.entity-type[data-type="person"] i { color: var(--entity-person); }
+.entity-type[data-type="organization"] i { color: var(--entity-organization); }
+.entity-type[data-type="location"] i { color: var(--entity-location); }
+.entity-type[data-type="event"] i { color: var(--entity-event); }
+.entity-type[data-type="custom"] i { color: var(--entity-custom); }
+
+.visualization-area {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    background-color: #f8f9fa;
+    background-image: 
+        linear-gradient(rgba(0,0,0,0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,0,0,0.05) 1px, transparent 1px);
+    background-size: 20px 20px;
+}
+
+#chart-container {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+}
+
+.chart-controls {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 100;
+    display: flex;
+    gap: 5px;
+    background-color: rgba(255,255,255,0.7);
+    padding: 5px;
+    border-radius: 4px;
+}
+
+/* Layout controls position */
+.layout-controls {
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    z-index: 100;
+    display: flex;
+    gap: 5px;
+    background-color: rgba(255,255,255,0.7);
+    padding: 5px;
+    border-radius: 4px;
+}
+
+/* Hierarchical layout toggle */
+.toggle-hierarchy {
+    border-color: #ff9900;
+    color: #ff9900;
+}
+
+.toggle-hierarchy:hover {
+    background-color: #ff9900;
+    color: white;
+}
+
+.app-footer {
+    height: var(--footer-height);
+    background-color: #f8f9fa;
+    border-top: 1px solid #ddd;
+    padding: 0 15px;
+    display: flex;
+    align-items: center;
+}
+
+.status-bar {
+    font-size: 0.8rem;
+    color: #666;
+}
+
+/* Node styling */
+.node {
+    cursor: pointer;
+}
+
+.node circle {
+    stroke-width: 2px;
+    stroke: #fff;
+}
+
+.node.person circle { fill: var(--entity-person); }
+.node.organization circle { fill: var(--entity-organization); }
+.node.location circle { fill: var(--entity-location); }
+.node.event circle { fill: var(--entity-event); }
+.node.custom circle { fill: var(--entity-custom); }
+
+/* Status-based styling */
+.node.todo circle { fill: #3498db; }
+.node.in-progress circle { fill: #f39c12; }
+.node.done circle { fill: #2ecc71; }
+.node.cancelled circle { fill: #95a5a6; }
+
+/* Entity type styling */
+.node.epic circle { fill: #9b59b6; }
+.node.story circle { fill: #3498db; }
+.node.work-item circle { fill: #1abc9c; }
+.node.task circle { fill: #e67e22; }
+
+.link {
+    stroke: #999;
+    stroke-opacity: 0.6;
+    stroke-width: 1.5px;
+}
+
+/* Enhanced styling for hierarchical links */
+.link.hierarchical {
+    stroke: #ff9900;
+    stroke-width: 2px;
+}
+
+.link.related {
+    stroke: #00aaff;
+    stroke-opacity: 0.7;
+}
+
+.node text {
+    font-size: 10px;
+    font-family: sans-serif;
+}
+
+/* Selected node styling */
+.node.selected circle {
+    stroke: #333;
+    stroke-width: 3px;
+}
+
+/* Property panel styling */
+.property-item {
+    margin-bottom: 8px;
+}
+
+.property-label {
+    font-weight: bold;
+    font-size: 0.9rem;
+}
+
+.property-value {
+    font-size: 0.9rem;
+}
+
+/* Issue status badge */
+.node .status-badge {
+    font-size: 8px;
+    fill: white;
+    text-anchor: middle;
+    font-weight: bold;
+    pointer-events: none;
+}
+
+/* Enhanced node hover */
+.node:hover circle {
+    stroke-width: 3px;
+    stroke: #333;
+}
+
+/* Tooltip for entity details */
+.chart-tooltip {
+    position: absolute;
+    background-color: rgba(255, 255, 255, 0.95);
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 10px;
+    font-size: 12px;
+    max-width: 300px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    z-index: 1000;
+    pointer-events: none;
+}
+
+.chart-tooltip h6 {
+    margin-top: 0;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+.chart-tooltip hr {
+    margin: 5px 0;
+}
+
+.chart-tooltip .tooltip-property {
+    margin-bottom: 3px;
+}
+
+.chart-tooltip .tooltip-label {
+    font-weight: bold;
+}
+
+/* Attribute panel enhancements for complex data */
+.properties-panel {
+    overflow-y: auto;
+    max-height: 50vh;
+}
+
+.property-category {
+    margin-top: 10px;
+    padding-top: 5px;
+    border-top: 1px solid #eee;
+    font-weight: bold;
+}
+
+.property-category + .property-item {
+    margin-top: 5px;
+}
+
+/* Custom entity type */
+.custom-entity-type {
+    color: var(--bs-primary);
+    border-top: 1px solid #eee;
+    margin-top: 10px;
+    padding-top: 10px;
+}
+
+/* Entity type create button */
+.entity-type-create {
+    cursor: pointer;
+    border: 1px dashed #ccc;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 12px;
+    border-radius: 4px;
+    color: #6c757d;
+    transition: background-color 0.2s;
+    margin-top: 10px;
+}
+
+.entity-type-create:hover {
+    background-color: #f8f9fa;
+}
+
+/* CSV Import styles */
+.csv-preview {
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+}
+
+#csv-preview-table th {
+    position: sticky;
+    top: 0;
+    background-color: #f8f9fa;
+    z-index: 1;
+}
+
+.column-mapping-container {
+    margin-top: 20px;
+}
+
+.column-checkbox {
+    margin-bottom: 10px;
+}
+
+.icon-dropdown {
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.icon-dropdown .dropdown-item i {
+    width: 20px;
+    text-align: center;
+    margin-right: 8px;
+}
+
+/* Creating relationship mode */
+body.creating-relationship {
+    cursor: crosshair;
+}
+
+body.creating-relationship .node {
+    cursor: pointer;
+}
+
+/* Progress bar for import */
+.import-progress {
+    margin: 20px 0;
+}
+
+/* Analysis highlighting styles */
+.node.highlighted circle {
+    stroke: #ff9500;
+    stroke-width: 3px;
+    filter: drop-shadow(0 0 3px rgba(255, 149, 0, 0.5));
+}
+
+.link.highlighted {
+    stroke: #ff9500;
+    stroke-opacity: 1;
+    stroke-width: 2px;
+}
+
+.node.hub-node circle {
+    stroke: #ff4500;
+    stroke-width: 4px;
+    filter: drop-shadow(0 0 5px rgba(255, 69, 0, 0.7));
+}
+
+/* Dimmed elements when highlighting connections */
+.node.dimmed {
+    opacity: 0.3;
+}
+
+.link.dimmed {
+    stroke-opacity: 0.1;
+}
+
+/* Analytics panel styles */
+#analysisTabs {
+    margin-bottom: 15px;
+}
+
+.pattern-card {
+    transition: transform 0.2s;
+}
+
+.pattern-card:hover {
+    transform: translateY(-3px);
+}
+
+/* Chart metrics styles */
+.progress {
+    height: 10px;
+}
+
+/* Centrality indicator */
+.node .centrality-indicator {
+    fill: none;
+    stroke: #ff9500;
+    stroke-width: 2px;
+    stroke-dasharray: 5,3;
+    pointer-events: none;
+}
+
+/* Analysis button highlight */
+#analyze-chart {
+    position: relative;
+}
+
+#analyze-chart::after {
+    content: "";
+    position: absolute;
+    top: -3px;
+    right: -3px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: #2ecc71;
+    display: none;
+}
+
+.has-new-data #analyze-chart::after {
+    display: block;
+}
+
+/* Stats overview cards */
+.stat-card {
+    border-radius: 10px;
+    transition: transform 0.3s, box-shadow 0.3s;
+    overflow: hidden;
+    margin-bottom: 20px;
+}
+
+.stat-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+}
+
+.stat-card .card-body {
+    padding: 20px;
+}
+
+.stat-value {
+    font-size: 2rem;
+    font-weight: bold;
+}
+
+.stat-label {
+    color: #6c757d;
+    font-size: 0.9rem;
+}
+
+.stat-icon {
+    font-size: 2.5rem;
+    opacity: 0.2;
+    position: absolute;
+    right: 20px;
+    bottom: 10px;
+}
+
+/* Network diagram visualization in analysis */
+.network-preview {
+    width: 100%;
+    height: 200px;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 20px;
+}

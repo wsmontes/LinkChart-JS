@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LinkChart JS</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <header class="app-header">
+            <div class="logo">LinkChart JS</div>
+            <div class="toolbar">
+                <button id="new-chart" class="btn btn-outline-light btn-sm"><i class="bi bi-file-earmark-plus"></i> New</button>
+                <button id="save-chart" class="btn btn-outline-light btn-sm"><i class="bi bi-save"></i> Save</button>
+                <button id="load-chart" class="btn btn-outline-light btn-sm"><i class="bi bi-folder2-open"></i> Open</button>
+                <button id="import-csv" class="btn btn-outline-light btn-sm"><i class="bi bi-file-earmark-text"></i> Import CSV</button>
+                <button id="export-chart" class="btn btn-outline-light btn-sm"><i class="bi bi-download"></i> Export</button>
+                <button id="analyze-chart" class="btn btn-outline-light btn-sm"><i class="bi bi-graph-up"></i> Analyze</button>
+            </div>
+        </header>
+        
+        <div class="main-content">
+            <div class="sidebar">
+                <div class="entity-palette">
+                    <h5>Entities</h5>
+                    <div class="entity-types">
+                        <div class="entity-type" draggable="true" data-type="person">
+                            <i class="bi bi-person"></i> Person
+                        </div>
+                        <div class="entity-type" draggable="true" data-type="organization">
+                            <i class="bi bi-building"></i> Organization
+                        </div>
+                        <div class="entity-type" draggable="true" data-type="location">
+                            <i class="bi bi-geo-alt"></i> Location
+                        </div>
+                        <div class="entity-type" draggable="true" data-type="event">
+                            <i class="bi bi-calendar-event"></i> Event
+                        </div>
+                        <div class="entity-type" draggable="true" data-type="custom">
+                            <i class="bi bi-box"></i> Custom
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="properties-panel">
+                    <h5>Properties</h5>
+                    <div id="entity-properties">
+                        <p class="text-muted">Select an entity to view properties</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="visualization-area">
+                <div class="chart-controls">
+                    <button id="zoom-in" class="btn btn-sm btn-light"><i class="bi bi-zoom-in"></i></button>
+                    <button id="zoom-out" class="btn btn-sm btn-light"><i class="bi bi-zoom-out"></i></button>
+                    <button id="fit-view" class="btn btn-sm btn-light"><i class="bi bi-arrows-fullscreen"></i></button>
+                </div>
+                <div class="layout-controls">
+                    <button id="hierarchical-layout" class="btn btn-sm btn-outline-warning toggle-hierarchy">
+                        <i class="bi bi-diagram-3"></i> Hierarchical
+                    </button>
+                    <button id="force-layout" class="btn btn-sm btn-outline-primary">
+                        <i class="bi bi-grid"></i> Force
+                    </button>
+                    <button id="circular-layout" class="btn btn-sm btn-outline-secondary">
+                        <i class="bi bi-circle"></i> Circular
+                    </button>
+                    <button id="analysis-layout" class="btn btn-sm btn-outline-success">
+                        <i class="bi bi-magic"></i> Optimal
+                    </button>
+                </div>
+                <div id="chart-container"></div>
+            </div>
+        </div>
+        
+        <footer class="app-footer">
+            <div class="status-bar">Ready</div>
+        </footer>
+    </div>
+
+    <!-- Modal for entity creation/editing -->
+    <div class="modal fade" id="entityModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Entity Details</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="entity-form">
+                        <div class="mb-3">
+                            <label for="entity-name" class="form-label">Name</label>
+                            <input type="text" class="form-control" id="entity-name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="entity-type" class="form-label">Type</label>
+                            <select class="form-select" id="entity-type">
+                                <option value="person">Person</option>
+                                <option value="organization">Organization</option>
+                                <option value="location">Location</option>
+                                <option value="event">Event</option>
+                                <option value="custom">Custom</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="entity-description" class="form-label">Description</label>
+                            <textarea class="form-control" id="entity-description" rows="3"></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="save-entity">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CSV Import Modal -->
+    <div class="modal fade" id="csvImportModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Import CSV Data</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Step 1: File Selection -->
+                    <div class="import-step" id="import-step-1">
+                        <h6>Step 1: Select CSV File</h6>
+                        <div class="mb-3">
+                            <input class="form-control" type="file" id="csv-file-input" accept=".csv">
+                        </div>
+                        <div class="mb-3">
+                            <label for="csv-delimiter" class="form-label">Delimiter</label>
+                            <select class="form-select" id="csv-delimiter">
+                                <option value="," selected>Comma (,)</option>
+                                <option value=";">Semicolon (;)</option>
+                                <option value="\t">Tab</option>
+                                <option value="|">Pipe (|)</option>
+                            </select>
+                        </div>
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" value="" id="csv-header" checked>
+                            <label class="form-check-label" for="csv-header">
+                                First row contains headers
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <!-- Step 2: Preview and Column Mapping -->
+                    <div class="import-step" id="import-step-2" style="display: none;">
+                        <h6>Step 2: Preview and Map Columns</h6>
+                        <div class="csv-preview mb-3">
+                            <div class="table-responsive">
+                                <table class="table table-sm table-bordered" id="csv-preview-table">
+                                    <thead>
+                                        <tr id="csv-preview-header"></tr>
+                                    </thead>
+                                    <tbody id="csv-preview-body"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                        
+                        <h6>Column Mapping</h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="entity-id-column" class="form-label">ID Column</label>
+                                    <select class="form-select" id="entity-id-column"></select>
+                                    <div class="form-text">Column that contains unique identifiers</div>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="entity-name-column" class="form-label">Name Column</label>
+                                    <select class="form-select" id="entity-name-column"></select>
+                                    <div class="form-text">Column to use as entity name</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="entity-import-type" class="form-label">Entity Type</label>
+                                    <div class="input-group">
+                                        <select class="form-select" id="entity-import-type">
+                                            <option value="person">Person</option>
+                                            <option value="organization">Organization</option>
+                                            <option value="location">Location</option>
+                                            <option value="event">Event</option>
+                                            <option value="custom">Custom</option>
+                                            <option value="new-type">Create New Type...</option>
+                                        </select>
+                                        <button class="btn btn-outline-secondary" type="button" id="create-type-btn" disabled>
+                                            <i class="bi bi-plus"></i>
+                                        </button>
+                                    </div>
+                                    <div class="form-text">Type of entities to create</div>
+                                </div>
+                                <div id="new-type-input" class="mb-3" style="display: none;">
+                                    <label for="new-entity-type-name" class="form-label">New Type Name</label>
+                                    <div class="input-group">
+                                        <input type="text" class="form-control" id="new-entity-type-name" placeholder="Type name">
+                                        <div class="input-group-text">
+                                            <i class="bi bi-circle" id="entity-type-icon-preview"></i>
+                                        </div>
+                                        <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">Icon</button>
+                                        <ul class="dropdown-menu icon-dropdown" id="entity-icon-dropdown">
+                                            <li><a class="dropdown-item" href="#" data-icon="bi-circle"><i class="bi bi-circle"></i> Circle</a></li>
+                                            <li><a class="dropdown-item" href="#" data-icon="bi-square"><i class="bi bi-square"></i> Square</a></li>
+                                            <li><a class="dropdown-item" href="#" data-icon="bi-triangle"><i class="bi bi-triangle"></i> Triangle</a></li>
+                                            <li><a class="dropdown-item" href="#" data-icon="bi-diamond"><i class="bi bi-diamond"></i> Diamond</a></li>
+                                            <li><a class="dropdown-item" href="#" data-icon="bi-star"><i class="bi bi-star"></i> Star</a></li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <h6>Include Columns</h6>
+                        <div class="row" id="column-selection">
+                            <!-- Column checkboxes will be generated here -->
+                        </div>
+                    </div>
+                    
+                    <!-- Step 3: Relationship Mapping -->
+                    <div class="import-step" id="import-step-3" style="display: none;">
+                        <h6>Step 3: Define Relationships (Optional)</h6>
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" value="" id="create-relationships">
+                            <label class="form-check-label" for="create-relationships">
+                                Create relationships between entities
+                            </label>
+                        </div>
+                        
+                        <div id="relationship-options" style="display: none;">
+                            <div class="mb-3">
+                                <label for="relationship-source" class="form-label">Source Column</label>
+                                <select class="form-select" id="relationship-source"></select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="relationship-target" class="form-label">Target Column</label>
+                                <select class="form-select" id="relationship-target"></select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="relationship-type" class="form-label">Relationship Type</label>
+                                <input type="text" class="form-control" id="relationship-type" placeholder="e.g., connected to">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <div class="import-step-buttons" id="step-1-buttons">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-primary" id="next-step-1">Next</button>
+                    </div>
+                    <div class="import-step-buttons" id="step-2-buttons" style="display: none;">
+                        <button type="button" class="btn btn-secondary" id="prev-step-2">Back</button>
+                        <button type="button" class="btn btn-primary" id="next-step-2">Next</button>
+                    </div>
+                    <div class="import-step-buttons" id="step-3-buttons" style="display: none;">
+                        <button type="button" class="btn btn-secondary" id="prev-step-3">Back</button>
+                        <button type="button" class="btn btn-primary" id="import-csv-data">Import Data</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- New Entity Type Modal -->
+    <div class="modal fade" id="entityTypeModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Create Entity Type</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="entity-type-form">
+                        <div class="mb-3">
+                            <label for="type-name" class="form-label">Type Name</label>
+                            <input type="text" class="form-control" id="type-name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="type-icon" class="form-label">Icon</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="type-icon" placeholder="bi-box" value="bi-box">
+                                <span class="input-group-text"><i id="type-icon-preview" class="bi bi-box"></i></span>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="type-color" class="form-label">Color</label>
+                            <input type="color" class="form-control form-control-color" id="type-color" value="#a29bfe">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="save-entity-type">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Analysis Results Modal -->
+    <div class="modal fade" id="analysisModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Graph Analysis</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <ul class="nav nav-tabs" id="analysisTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="summary-tab" data-bs-toggle="tab" data-bs-target="#summary-tab-pane" type="button" role="tab">Summary</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="metrics-tab" data-bs-toggle="tab" data-bs-target="#metrics-tab-pane" type="button" role="tab">Metrics</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="patterns-tab" data-bs-toggle="tab" data-bs-target="#patterns-tab-pane" type="button" role="tab">Patterns</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="central-nodes-tab" data-bs-toggle="tab" data-bs-target="#central-nodes-tab-pane" type="button" role="tab">Key Nodes</button>
+                        </li>
+                    </ul>
+                    <div class="tab-content pt-3" id="analysisTabContent">
+                        <div class="tab-pane fade show active" id="summary-tab-pane" role="tabpanel" aria-labelledby="summary-tab" tabindex="0">
+                            <div id="analysis-summary"></div>
+                        </div>
+                        <div class="tab-pane fade" id="metrics-tab-pane" role="tabpanel" aria-labelledby="metrics-tab" tabindex="0">
+                            <div id="analysis-metrics"></div>
+                        </div>
+                        <div class="tab-pane fade" id="patterns-tab-pane" role="tabpanel" aria-labelledby="patterns-tab" tabindex="0">
+                            <div id="analysis-patterns"></div>
+                        </div>
+                        <div class="tab-pane fade" id="central-nodes-tab-pane" role="tabpanel" aria-labelledby="central-nodes-tab" tabindex="0">
+                            <div id="analysis-central-nodes"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-success" id="apply-optimal-layout">
+                        Apply Optimal Layout
+                    </button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <script src="js/analysis.js"></script>
+    <script src="js/models.js"></script>
+    <script src="js/chart.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/data.js"></script>
+    <script src="js/import.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
