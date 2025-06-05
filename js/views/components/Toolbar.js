@@ -4,12 +4,12 @@
 class ToolbarComponent {
     constructor() {
         this.actionHandlers = {
-            'fa-plus': this.handleNewInvestigation,
-            'fa-save': this.handleSave,
-            'fa-folder-open': this.handleOpen,
-            'fa-search': this.handleSearch,
-            'fa-filter': this.handleFilter,
-            'fa-cog': this.handleSettings
+            'fa-plus': this.handleNewInvestigation.bind(this),
+            'fa-save': this.handleSave.bind(this),
+            'fa-folder-open': this.handleOpen.bind(this),
+            'fa-search': this.handleSearch.bind(this),
+            'fa-filter': this.handleFilter.bind(this),
+            'fa-cog': this.handleSettings.bind(this)
         };
         
         this.initializeToolbar();
@@ -46,10 +46,10 @@ class ToolbarComponent {
         
         // Add export dropdown
         this.addDropdownButton(toolbar, 'Export', 'fa-file-export', [
-            { label: 'Export as JSON', icon: 'fa-file-code', action: this.handleExportJSON },
-            { label: 'Export as CSV', icon: 'fa-file-csv', action: this.handleExportCSV },
-            { label: 'Export as Image', icon: 'fa-file-image', action: this.handleExportImage },
-            { label: 'Generate Report', icon: 'fa-file-pdf', action: this.handleGenerateReport }
+            { label: 'Export as JSON', icon: 'fa-file-code', action: this.handleExportJSON.bind(this) },
+            { label: 'Export as CSV', icon: 'fa-file-csv', action: this.handleExportCSV.bind(this) },
+            { label: 'Export as Image', icon: 'fa-file-image', action: this.handleExportImage.bind(this) },
+            { label: 'Generate Report', icon: 'fa-file-pdf', action: this.handleGenerateReport.bind(this) }
         ]);
         
         // Add import dropdown
@@ -65,7 +65,7 @@ class ToolbarComponent {
         ]);
         
         // Add analytics button
-        this.addButton(toolbar, 'Analytics', 'fa-chart-line', this.handleAnalytics);
+        this.addButton(toolbar, 'Analytics', 'fa-chart-line', this.handleAnalytics.bind(this));
         
         // Add layout button
         this.addDropdownButton(toolbar, 'Layout', 'fa-vector-square', [
@@ -76,7 +76,7 @@ class ToolbarComponent {
         ]);
         
         // Add map view button
-        this.addButton(toolbar, 'Map View', 'fa-map', this.handleMapView);
+        this.addButton(toolbar, 'Map View', 'fa-map', this.handleMapView.bind(this));
     }
     
     /**
@@ -1007,9 +1007,9 @@ class ToolbarComponent {
             const toggleBtn = document.createElement('button');
             toggleBtn.className = 'btn btn-sm btn-primary map-toggle-btn';
             toggleBtn.innerHTML = '<i class="fas fa-project-diagram"></i> Graph View';
-            toggleBtn.addEventListener('click', () => {
-                this.handleMapView();
-            });
+            
+            // Use bound method for event handler to preserve 'this' context
+            toggleBtn.addEventListener('click', this.handleMapView.bind(this));
             
             mapContainer.appendChild(toggleBtn);
             
@@ -1053,9 +1053,15 @@ class ToolbarComponent {
                 
                 const script = document.createElement('script');
                 script.src = 'https://unpkg.com/leaflet@1.7.1/dist/leaflet.js';
-                script.onload = () => {
-                    this.initializeMap();
+                
+                // Store this context and properly bind the initialization function
+                const boundInitializeMap = this.initializeMap.bind(this);
+                
+                // Use direct function reference for onload
+                script.onload = function() {
+                    boundInitializeMap();
                 };
+                
                 document.body.appendChild(script);
             } else {
                 this.initializeMap();
@@ -1087,7 +1093,7 @@ class ToolbarComponent {
         
         // Get location entities from the graph
         eventBus.emit('entity:getLocations', {
-            callback: (locations) => this.addLocationsToMap(map, locations)
+            callback: this.addLocationsToMap.bind(this, map)
         });
     }
     
@@ -1097,7 +1103,7 @@ class ToolbarComponent {
      * @param {Array} locations - Array of location entities
      */
     addLocationsToMap(map, locations) {
-        if (locations.length === 0) {
+        if (!locations || locations.length === 0) {
             alert('No location entities found with valid coordinates.');
             return;
         }

@@ -10,13 +10,112 @@ class SourcesViewer {
         this.parent = parent;
         this.container = parent.container.querySelector('.uv-sources-view');
         this.sourceGrid = this.container.querySelector('.uv-source-grid');
+        this.cy = null; // Cytoscape instance
+        this.sourceNodes = {};
+        this.sourceLinks = [];
     }
     
     /**
      * Initialize the component
      */
     init() {
+        // Convert the source grid to a cytoscape container
+        this.sourceGrid.innerHTML = '';
+        this.sourceGrid.style.height = '100%';
+        
+        // Initialize Cytoscape
+        this.initCytoscape();
+        
+        // Setup default data sources
         this.setupDefaultDataSources();
+    }
+    
+    /**
+     * Initialize Cytoscape instance for sources visualization
+     */
+    initCytoscape() {
+        this.cy = cytoscape({
+            container: this.sourceGrid,
+            style: [
+                {
+                    selector: 'node',
+                    style: {
+                        'label': 'data(label)',
+                        'color': '#fff',
+                        'font-size': '12px',
+                        'text-valign': 'bottom',
+                        'text-margin-y': '10px',
+                        'background-color': 'data(color)',
+                        'border-width': 2,
+                        'border-color': '#fff',
+                        'border-opacity': 0.7,
+                        'width': 80,
+                        'height': 80
+                    }
+                },
+                {
+                    selector: 'node[type="imported"]',
+                    style: {
+                        'text-background-color': '#f8f9fa',
+                        'text-background-opacity': 0.8,
+                        'text-background-padding': '3px',
+                        'text-background-shape': 'roundrectangle'
+                    }
+                },
+                {
+                    selector: 'edge',
+                    style: {
+                        'width': 2,
+                        'line-color': '#ccc',
+                        'curve-style': 'bezier',
+                        'opacity': 0.6
+                    }
+                },
+                {
+                    selector: ':selected',
+                    style: {
+                        'border-width': 4,
+                        'border-color': '#3498db'
+                    }
+                }
+                // Removing the invalid node:hover selector
+                // Instead, we'll use the mouseover/mouseout event handlers below
+            ],
+            layout: {
+                name: 'cose',
+                fit: true,
+                padding: 50,
+                nodeOverlap: 20,
+                idealEdgeLength: 150,
+                edgeElasticity: 100,
+                animate: true
+            }
+        });
+        
+        // Handle click events on nodes
+        this.cy.on('tap', 'node', (event) => {
+            const sourceId = event.target.id();
+            this.openDataSource(sourceId);
+        });
+        
+        // Add mouse interaction
+        this.cy.on('mouseover', 'node', (event) => {
+            const node = event.target;
+            node.style({
+                'border-width': 3,
+                'border-color': '#3498db'
+            });
+        });
+        
+        this.cy.on('mouseout', 'node', (event) => {
+            const node = event.target;
+            if (!node.selected()) {
+                node.style({
+                    'border-width': 2,
+                    'border-color': '#fff'
+                });
+            }
+        });
     }
     
     /**
@@ -29,7 +128,8 @@ class SourcesViewer {
             name: 'Local Storage',
             type: 'storage',
             icon: 'fa-hdd',
-            color: '#3498db'
+            color: '#3498db',
+            position: { x: 0, y: -150 }
         });
         
         this.addDataSource({
@@ -37,7 +137,8 @@ class SourcesViewer {
             name: 'CSV Import',
             type: 'file',
             icon: 'fa-file-csv',
-            color: '#2ecc71'
+            color: '#2ecc71',
+            position: { x: -150, y: 0 }
         });
         
         this.addDataSource({
@@ -45,7 +146,8 @@ class SourcesViewer {
             name: 'JSON Import',
             type: 'file',
             icon: 'fa-file-code',
-            color: '#e74c3c'
+            color: '#e74c3c',
+            position: { x: 0, y: 150 }
         });
         
         this.addDataSource({
@@ -53,7 +155,8 @@ class SourcesViewer {
             name: 'API Connection',
             type: 'api',
             icon: 'fa-cloud',
-            color: '#9b59b6'
+            color: '#9b59b6',
+            position: { x: 150, y: 0 }
         });
         
         this.addDataSource({
@@ -61,7 +164,8 @@ class SourcesViewer {
             name: 'Excel Import',
             type: 'file',
             icon: 'fa-file-excel',
-            color: '#f39c12'
+            color: '#f39c12',
+            position: { x: -100, y: -100 }
         });
         
         this.addDataSource({
@@ -69,8 +173,30 @@ class SourcesViewer {
             name: 'Database',
             type: 'database',
             icon: 'fa-database',
-            color: '#16a085'
+            color: '#16a085',
+            position: { x: 100, y: 100 }
         });
+        
+        // Apply layout
+        this.applyLayout();
+    }
+    
+    /**
+     * Apply layout to the source chart
+     * @param {string} layoutName - Name of the layout to apply
+     */
+    applyLayout(layoutName = 'cose') {
+        const layout = this.cy.layout({ 
+            name: layoutName,
+            fit: true,
+            padding: 50,
+            animate: true,
+            animationDuration: 500,
+            randomize: false, // Use existing positions if available
+            nodeOverlap: 20,
+            idealEdgeLength: 150,
+        });
+        layout.run();
     }
     
     /**
@@ -81,34 +207,125 @@ class SourcesViewer {
         // Add to state
         this.parent.state.dataSources[source.id] = source;
         
-        // Create UI element
-        const sourceElement = document.createElement('div');
-        sourceElement.className = 'uv-source-item';
-        sourceElement.dataset.sourceId = source.id;
+        // Create node for the source
+        const badge = source.type === 'imported' && source.metadata && source.metadata.entityCount 
+            ? `${source.metadata.entityCount} entities` 
+            : '';
         
-        // Create badge for data tables that have been imported
-        let badge = '';
-        if (source.type === 'imported' && source.metadata && source.metadata.entityCount) {
-            badge = `<span class="uv-source-badge">${source.metadata.entityCount} entities</span>`;
+        // Add to Cytoscape
+        const node = {
+            group: 'nodes',
+            data: {
+                id: source.id,
+                label: source.name,
+                type: source.type,
+                color: source.color,
+                icon: source.icon,
+                badge: badge
+            },
+            position: source.position || { x: Math.random() * 200 - 100, y: Math.random() * 200 - 100 }
+        };
+        
+        this.cy.add(node);
+        this.sourceNodes[source.id] = node;
+        
+        // If this is an imported data source, add links to the parent sources
+        if (source.type === 'imported' && source.parentSource) {
+            const edge = {
+                group: 'edges',
+                data: {
+                    id: `edge-${source.parentSource}-${source.id}`,
+                    source: source.parentSource,
+                    target: source.id
+                }
+            };
+            this.cy.add(edge);
+            this.sourceLinks.push(edge);
         }
-        
-        sourceElement.innerHTML = `
-            <div class="uv-source-icon" style="color: ${source.color}">
-                <i class="fas ${source.icon}"></i>
-            </div>
-            <div class="uv-source-name">${source.name}</div>
-            <div class="uv-source-type">${source.type}</div>
-            ${badge}
-        `;
-        
-        sourceElement.addEventListener('click', () => {
-            this.openDataSource(source.id);
-        });
-        
-        this.sourceGrid.appendChild(sourceElement);
         
         // Update items count
         this.parent.updateItemCount(Object.keys(this.parent.state.dataSources).length);
+        
+        // Add icon to the node
+        this.addIconToNode(source);
+        
+        return node;
+    }
+    
+    /**
+     * Add icon to source node
+     * @param {Object} source - Source configuration
+     */
+    addIconToNode(source) {
+        // Use afterRender event to add custom HTML to the node
+        const node = this.cy.getElementById(source.id);
+        if (!node || !node.length) return;
+        
+        // Use Cytoscape's built-in background-image property for the icon
+        node.style({
+            'background-image': this.getIconDataUrl(source.icon, source.color),
+            'background-fit': 'cover',
+            'background-width': '50%',
+            'background-height': '50%',
+            'background-position-x': '50%',
+            'background-position-y': '40%'
+        });
+        
+        // If this source has a badge (imported data), add it
+        if (source.type === 'imported' && source.metadata && source.metadata.entityCount) {
+            // Add badge as overlay (handled by CSS)
+            node.addClass('has-badge');
+            node.data('badgeText', `${source.metadata.entityCount}`);
+        }
+    }
+    
+    /**
+     * Get data URL for an icon
+     * @param {string} iconClass - FontAwesome icon class
+     * @param {string} color - Color for the icon
+     * @returns {string} Data URL for the icon
+     */
+    getIconDataUrl(iconClass, color) {
+        // Create a canvas to draw the icon
+        const canvas = document.createElement('canvas');
+        canvas.width = 64;
+        canvas.height = 64;
+        const ctx = canvas.getContext('2d');
+        
+        // Load FontAwesome CSS if not already loaded
+        const faStyle = document.querySelector('link[href*="font-awesome"]');
+        if (!faStyle) {
+            const link = document.createElement('link');
+            link.rel = 'stylesheet';
+            link.href = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css';
+            document.head.appendChild(link);
+        }
+        
+        // Draw icon (approximate solution - in a real app we'd use a proper icon rendering library)
+        ctx.fillStyle = color || '#ffffff';
+        ctx.font = '32px "Font Awesome 5 Free"';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        
+        // Use a base icon (text representation) - not ideal but works as fallback
+        let iconChar = '';
+        
+        // Map common FontAwesome icons to characters
+        const iconMap = {
+            'fa-hdd': '\uf0A0',
+            'fa-file-csv': '\uf6DD',
+            'fa-file-code': '\uf1C9',
+            'fa-cloud': '\uf0C2',
+            'fa-file-excel': '\uf1C3',
+            'fa-database': '\uf1C0',
+            'fa-table': '\uf0CE'
+        };
+        
+        iconChar = iconMap[iconClass] || '\uf059'; // Default to question mark
+        
+        ctx.fillText(iconChar, 32, 32);
+        
+        return canvas.toDataURL();
     }
     
     /**
@@ -185,7 +402,28 @@ class SourcesViewer {
         // Use the existing import modal with callback to load into Universal Viewer
         eventBus.once('import:complete', (result) => {
             if (result && result.entities) {
-                universalViewerController.loadEntities(sourceId, result.entities);
+                // Create imported data source node linked to the parent
+                const importedSourceId = `imported-${sourceId}-${Date.now()}`;
+                this.addDataSource({
+                    id: importedSourceId,
+                    name: `Imported Data (${result.entities.length} items)`,
+                    type: 'imported',
+                    icon: 'fa-table',
+                    color: source.color,
+                    parentSource: sourceId,
+                    metadata: {
+                        imported: new Date().toISOString(),
+                        entityCount: result.entities.length,
+                        linkCount: result.links ? result.links.length : 0,
+                        fileType: fileType
+                    }
+                });
+                
+                // Apply layout to show the connection
+                this.applyLayout();
+                
+                // Load the entities
+                universalViewerController.loadEntities(importedSourceId, result.entities);
             }
         });
         
@@ -215,24 +453,22 @@ class SourcesViewer {
      */
     applySearch(term) {
         if (!term) {
-            // Show all sources
-            this.container.querySelectorAll('.uv-source-item').forEach(item => {
-                item.style.display = 'block';
-            });
+            // Show all nodes
+            this.cy.nodes().removeClass('filtered');
             return;
         }
         
         term = term.toLowerCase();
         
-        // Filter sources
-        this.container.querySelectorAll('.uv-source-item').forEach(item => {
-            const sourceName = item.querySelector('.uv-source-name').textContent.toLowerCase();
-            const sourceType = item.querySelector('.uv-source-type').textContent.toLowerCase();
+        // Filter nodes
+        this.cy.nodes().forEach(node => {
+            const label = node.data('label').toLowerCase();
+            const type = node.data('type').toLowerCase();
             
-            if (sourceName.includes(term) || sourceType.includes(term)) {
-                item.style.display = 'block';
+            if (label.includes(term) || type.includes(term)) {
+                node.removeClass('filtered');
             } else {
-                item.style.display = 'none';
+                node.addClass('filtered');
             }
         });
     }
@@ -241,12 +477,13 @@ class SourcesViewer {
      * Handle view mode change
      */
     onViewModeChange() {
-        if (this.sourceGrid.classList.contains('grid-view')) {
-            this.sourceGrid.classList.remove('grid-view');
-            this.sourceGrid.classList.add('list-view');
+        // Toggle between different layouts
+        if (this.currentLayout === 'cose') {
+            this.applyLayout('grid');
+            this.currentLayout = 'grid';
         } else {
-            this.sourceGrid.classList.remove('list-view');
-            this.sourceGrid.classList.add('grid-view');
+            this.applyLayout('cose');
+            this.currentLayout = 'cose';
         }
     }
 }

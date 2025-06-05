@@ -1,0 +1,47 @@
+{
+  "email": {
+    "fieldNames": ["email", "e-mail", "emailaddress", "mail"],
+    "regex": "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
+  },
+  "phone": {
+    "fieldNames": ["phone", "telephone", "tel", "mobile", "cell", "phonenumber", "phone_number", "contact"],
+    "regex": "^(?:\\+?\\d{1,3}[-\\.\\s]?)?\\(?(?:\\d{1,4})\\)?[-\\.\\s]?(?:\\d{1,4})[-\\.\\s]?(?:\\d{1,9})$"
+  },
+  "url": {
+    "fieldNames": ["website", "url", "web", "site", "homepage", "domain", "link"],
+    "regex": "^(?:https?:\\/\\/)?(?:www\\.)?[a-zA-Z0-9-]+(?:\\.[a-zA-Z0-9-]+)+(?:\\/[^\\s]*)?$"
+  },
+  "coordinates": {
+    "fieldNames": ["coordinates", "location", "position", "latlng", "geo", "coords"],
+    "regex": "^(-?\\d+\\.?\\d*)[,\\s]+(-?\\d+\\.?\\d*)$"
+  },
+  "date": {
+    "fieldNames": ["date", "birthdate", "birth", "dob", "start", "end", "created", "modified", "timestamp", "birthday"],
+    "regex": "^(?:\\d{1,4}[-/\\.\\s]\\d{1,2}[-/\\.\\s]\\d{1,4}|\\d{1,2}[-/\\.\\s]\\d{1,2}[-/\\.\\s]\\d{2,4})$",
+    "iso8601": "^\\d{4}-\\d{2}-\\d{2}(?:T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|[+-]\\d{2}:\\d{2})?)?$"
+  },
+  "name": {
+    "fieldNames": ["name", "fullname", "lastname", "firstname", "first_name", "last_name", "user", "username", "author", "owner", "person"],
+    "regex": "^[a-zA-Z]+(?:\\s+[a-zA-Z.\\',\\-]+){0,2}$"
+  },
+  "address": {
+    "fieldNames": ["address", "street", "streetaddress", "residence", "location", "place", "addr"],
+    "regex": "^.+(?:street|st|road|rd|avenue|ave|boulevard|blvd|lane|ln|drive|dr|way|court|ct|plaza|square|sq|parkway|pkwy|place|pl|highway|hwy)\\b.*$"
+  },
+  "money": {
+    "fieldNames": ["price", "cost", "amount", "fee", "salary", "revenue", "income", "money", "budget", "payment"],
+    "regex": "^[$€£¥]?\\s*\\d+(?:[,.]\\d+)*(?:\\.\\d{1,2})?$"
+  },
+  "ssn": {
+    "fieldNames": ["ssn", "socialsecurity", "nationalid", "idnumber", "id", "national_id"],
+    "regex": "^(?:\\d{3}-\\d{2}-\\d{4}|\\d{9}|\\d{3}\\s\\d{2}\\s\\d{4})$"
+  },
+  "postalCode": {
+    "fieldNames": ["zip", "zipcode", "postal", "postalcode", "postcode", "postal_code"],
+    "regex": "^[a-zA-Z0-9\\s-]{3,10}$"
+  },
+  "ipAddress": {
+    "fieldNames": ["ip", "ipaddress", "ipaddr", "ip_address"],
+    "regex": "^(?:\\d{1,3}\\.){3}\\d{1,3}$"
+  }
+}

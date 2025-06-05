@@ -19,6 +19,7 @@ class ImportController {
                 this.importData(data.data, data.merge);
             }
             // Otherwise, data is automatically sent to universalViewerController via event bus
+            // Our DataProcessorModule will intercept this event before it reaches the universalViewerController
         });
         
         // Show import file type modal
