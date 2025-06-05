@@ -1,0 +1,54 @@
+/* Modal styles */
+.modal-dialog.modal-xl {
+    max-width: 90%;
+}
+
+.preview-container {
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid #dee2e6;
+    border-radius: 0.25rem;
+    padding: 0.5rem;
+}
+
+.mapping-container {
+    margin-bottom: 1rem;
+    padding: 1rem;
+    border: 1px solid #dee2e6;
+    border-radius: 0.25rem;
+    background-color: #f8f9fa;
+}
+
+/* Import progress */
+#import-progress-container {
+    width: 50%;
+    left: 25%;
+}
+
+/* File type detection grid */
+.format-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.format-item {
+    border: 1px solid #dee2e6;
+    border-radius: 0.25rem;
+    padding: 1rem;
+    text-align: center;
+    transition: all 0.2s;
+}
+
+.format-item:hover {
+    background-color: #f0f7ff;
+    border-color: var(--accent-color);
+    cursor: pointer;
+}
+
+.format-item i {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+    display: block;
+}

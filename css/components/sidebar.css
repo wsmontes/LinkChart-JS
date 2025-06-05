@@ -1,0 +1,64 @@
+/* Sidebar Styles */
+.sidebar {
+    width: 250px;
+    background: var(--sidebar-bg);
+    border-right: 1px solid var(--sidebar-border);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+}
+
+.right-sidebar {
+    border-right: none;
+    border-left: 1px solid var(--sidebar-border);
+}
+
+.sidebar-header {
+    padding: 12px 15px;
+    border-bottom: 1px solid var(--sidebar-border);
+    font-weight: 500;
+    background-color: #f1f1f1;
+}
+
+/* Entity List Styling */
+.entity-list, .link-list {
+    padding: 8px;
+}
+
+.entity-item {
+    padding: 8px 12px;
+    margin: 5px 0;
+    border-radius: 4px;
+    background-color: white;
+    border: 1px solid #ddd;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.entity-item:hover {
+    background-color: #f0f7ff;
+    border-color: var(--accent-color);
+}
+
+.entity-item i {
+    width: 20px;
+    text-align: center;
+}
+
+/* Entity Details Form */
+.entity-details {
+    padding: 15px;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.no-selection-message {
+    color: #aaa;
+    text-align: center;
+    padding: 20px 0;
+}

@@ -1,183 +1,101 @@
 /**
- * Main application file for LinkChart JS
+ * Main application entry point
  */
-
-// Initialize the application when the DOM is loaded
-document.addEventListener('DOMContentLoaded', () => {
-    initApplication();
-});
-
-function initApplication() {
-    // Create chart data
-    const chartData = new ChartData();
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize views
+    const graphView = new GraphView('graph-container');
+    const entityDetails = new EntityDetailsComponent();
+    const sidebarView = new SidebarView();
+    const timelineView = new TimelineView();
     
-    // Initialize the visualization
-    const chart = new ChartVisualization('chart-container', chartData);
-    chart.init();
+    // Initialize controllers
+    const graphController = new GraphController(graphView);
+    const entityController = new EntityController(graphController);
+    const uiController = new UIController(graphController);
     
-    // Initialize the UI manager
-    const uiManager = new UiManager(chart);
-    uiManager.init();
-
-    // Initialize CSV importer after UI manager is ready
-    const csvImporter = new CsvImporter(chart, uiManager);
-    csvImporter.init();
+    // The UniversalViewerController is auto-initialized
     
-    // Initialize the entity type modal
-    uiManager.initEntityTypeModal();
+    // Initialize drag and drop
+    const dragAndDrop = new DragAndDropHandler(graphController);
     
-    // Initialize analyzer
-    const analyzer = new GraphAnalysis(chartData);
+    // Initialize toolbar
+    const toolbar = new ToolbarComponent();
     
-    // Add auto-analysis tracking
-    let lastEntityCount = 0;
-    let lastRelationshipCount = 0;
-    let analysisNeeded = false;
+    // Add button to toggle Universal Viewer
+    addUniversalViewerToggle();
     
-    // Set up observer to track changes and suggest analysis
-    const dataObserver = new MutationObserver(() => {
-        // Check if significant changes have been made
-        const currentEntityCount = chart.data.entities.length;
-        const currentRelationshipCount = chart.data.relationships.length;
-        
-        // Suggest analysis if the graph has grown by more than 20%
-        if (currentEntityCount > 5 && 
-            (currentEntityCount > lastEntityCount * 1.2 || 
-             currentRelationshipCount > lastRelationshipCount * 1.2)) {
-            
-            // Mark that analysis would be helpful
-            analysisNeeded = true;
-            
-            // Add visual indicator
-            document.getElementById('analyze-chart').closest('.app-container')
-                .classList.add('has-new-data');
-        }
-        
-        lastEntityCount = currentEntityCount;
-        lastRelationshipCount = currentRelationshipCount;
+    // Set up drag and drop link mode
+    eventBus.on('dragdrop:enableLinkMode', (linkType) => {
+        dragAndDrop.enableLinkMode(linkType);
     });
     
-    // Register data manager events
-    chart.data.onChanged = () => {
-        // Trigger the observer
-        dataObserver.observe(document.body, { childList: true, subtree: true });
-        
-        // Disconnect immediately to avoid unnecessary observations
-        setTimeout(() => dataObserver.disconnect(), 100);
-    };
+    eventBus.on('dragdrop:cancelLinkMode', () => {
+        dragAndDrop.disableLinkMode();
+    });
     
-    // Check if there's saved data to load
-    checkForSavedData(chart);
-    
-    // Add to global for debugging purposes
-    window.linkChartApp = {
-        chart,
-        uiManager,
-        dataManager,
-        csvImporter,
-        analyzer
-    };
-}
-
-async function checkForSavedData(chart) {
-    try {
-        // Try to load saved data from local storage
-        const savedData = await dataManager.loadChart();
-        
-        if (savedData && savedData.entities.length > 0) {
-            chart.updateData(savedData);
-            chart.fitView();
-            
-            // Check if we should apply analysis-based layout
-            if (savedData.lastLayoutType === 'analysis') {
-                // Create an analyzer and apply optimal layout
-                const analyzer = new GraphAnalysis(chart.data);
-                analyzer.analyzeGraph();
-                analyzer.applyOptimalLayout(chart);
-            }
-            // Apply hierarchical layout if hierarchical relationships exist
-            else if (savedData.relationships.some(r => r.type === 'hierarchical')) {
-                setTimeout(() => chart.optimizeHierarchicalLayout(), 300);
-            }
-        } else {
-            // Load sample data if no saved data
-            loadSampleData(chart);
+    // Add CSS for import preview
+    const style = document.createElement('style');
+    style.textContent = `
+        .preview-container {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #dee2e6;
+            border-radius: 0.25rem;
+            padding: 0.5rem;
         }
-    } catch (error) {
-        console.error('Error loading saved data:', error);
-        loadSampleData(chart);
-    }
-}
-
-function loadSampleData(chart) {
-    // Check if we want to load issue tracking sample data or regular sample data
-    const urlParams = new URLSearchParams(window.location.search);
-    const dataType = urlParams.get('data') || 'default';
+        .form-label {
+            font-weight: 500;
+            margin-bottom: 0.25rem;
+        }
+    `;
+    document.head.appendChild(style);
     
-    // First ensure we have entity types before loading sample data
-    const uiManager = new UiManager(chart);
+    console.log('LinkChart JS application initialized');
     
-    if (dataType === 'issues') {
-        const sampleData = dataManager.createIssueSampleData();
-        chart.updateData(sampleData);
-        chart.fitView();
+    /**
+     * Add Universal Viewer toggle button to toolbar
+     */
+    function addUniversalViewerToggle() {
+        const toolbar = document.querySelector('.toolbar');
+        const divider = document.createElement('div');
+        divider.className = 'divider';
+        toolbar.appendChild(divider);
         
-        // Apply hierarchical layout for issue data
-        setTimeout(() => chart.optimizeHierarchicalLayout(), 500);
-    } else if (dataType === 'analysis') {
-        // Load data specifically designed to showcase analysis features
-        const complexData = dataManager.createComplexSampleData();
-        chart.updateData(complexData);
-        chart.fitView();
-        
-        // Run analysis after a delay to ensure rendering is complete
-        setTimeout(() => {
-            const analyzer = new GraphAnalysis(chart.data);
-            analyzer.analyzeGraph();
-            analyzer.applyOptimalLayout(chart);
-        }, 700);
-    } else {
-        // Create standard sample data for first-time users
-        const sampleData = dataManager.createSampleData();
-        chart.updateData(sampleData);
-        chart.fitView();
+        const uvButton = document.createElement('button');
+        uvButton.className = 'btn btn-outline-light';
+        uvButton.innerHTML = '<i class="fas fa-table"></i> Universal Viewer';
+        uvButton.addEventListener('click', toggleUniversalViewer);
+        toolbar.appendChild(uvButton);
     }
     
-    // Update the UI to show the entity types
-    uiManager.updateEntityPalette();
-}
+    /**
+     * Toggle Universal Viewer visibility
+     */
+    function toggleUniversalViewer() {
+        const uvContainer = document.getElementById('universal-viewer-container');
+        const mainContent = document.querySelector('.main-content');
+        
+        if (uvContainer.style.display === 'none') {
+            uvContainer.style.display = 'block';
+            mainContent.style.display = 'none';
+        } else {
+            uvContainer.style.display = 'none';
+            mainContent.style.display = 'flex';
+        }
+    }
+});
 
-// Add change tracking to ChartData
-function enhanceChartData() {
-    // Add change event support to ChartData
-    const originalAddEntity = ChartData.prototype.addEntity;
-    ChartData.prototype.addEntity = function(entity) {
-        const result = originalAddEntity.call(this, entity);
-        if (this.onChanged) this.onChanged();
-        return result;
-    };
-    
-    const originalAddRelationship = ChartData.prototype.addRelationship;
-    ChartData.prototype.addRelationship = function(relationship) {
-        const result = originalAddRelationship.call(this, relationship);
-        if (this.onChanged) this.onChanged();
-        return result;
-    };
-    
-    const originalRemoveEntityById = ChartData.prototype.removeEntityById;
-    ChartData.prototype.removeEntityById = function(id) {
-        const result = originalRemoveEntityById.call(this, id);
-        if (this.onChanged) this.onChanged();
-        return result;
-    };
-    
-    const originalRemoveRelationshipById = ChartData.prototype.removeRelationshipById;
-    ChartData.prototype.removeRelationshipById = function(id) {
-        const result = originalRemoveRelationshipById.call(this, id);
-        if (this.onChanged) this.onChanged();
-        return result;
-    };
+/**
+ * Load saved settings from localStorage
+ */
+function loadSavedSettings() {
+    const savedSettings = localStorage.getItem('linkchartSettings');
+    if (savedSettings) {
+        try {
+            const settings = JSON.parse(savedSettings);
+            eventBus.emit('settings:change', settings);
+        } catch (error) {
+            console.error('Error loading saved settings:', error);
+        }
+    }
 }
-
-// Enhance ChartData with change tracking
-enhanceChartData();

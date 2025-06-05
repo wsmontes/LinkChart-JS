@@ -1,0 +1,22 @@
+/* Graph Visualization Styles */
+.visualization-area {
+    flex: 1;
+    background-color: white;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Placeholder Styling */
+.placeholder-message {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    color: #aaa;
+}
+
+.placeholder-message i {
+    font-size: 48px;
+    margin-bottom: 15px;
+}

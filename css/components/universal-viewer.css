@@ -1,0 +1,254 @@
+/* Universal Viewer Styles */
+
+.universal-viewer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #fff;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+}
+
+.uv-header {
+    padding: 10px 15px;
+    background-color: var(--header-color);
+    color: #fff;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.uv-breadcrumb {
+    display: flex;
+    align-items: center;
+}
+
+.uv-breadcrumb-item {
+    padding: 5px 10px;
+    cursor: pointer;
+    border-radius: 3px;
+    transition: all 0.2s;
+}
+
+.uv-breadcrumb-item:hover:not(.disabled) {
+    background-color: rgba(255,255,255,0.1);
+}
+
+.uv-breadcrumb-item.active {
+    font-weight: bold;
+    background-color: rgba(255,255,255,0.2);
+}
+
+.uv-breadcrumb-item.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.uv-breadcrumb-separator {
+    margin: 0 5px;
+    color: rgba(255,255,255,0.5);
+}
+
+.uv-toolbar {
+    padding: 10px 15px;
+    border-bottom: 1px solid var(--sidebar-border);
+    background-color: #f8f9fa;
+}
+
+.uv-filter-panel {
+    position: absolute;
+    top: 110px;
+    right: 15px;
+    width: 300px;
+    background-color: #fff;
+    border: 1px solid var(--sidebar-border);
+    border-radius: 5px;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+    z-index: 100;
+}
+
+.uv-filter-header {
+    padding: 10px 15px;
+    border-bottom: 1px solid var(--sidebar-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.uv-filter-content {
+    padding: 15px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.uv-filter-footer {
+    padding: 10px 15px;
+    border-top: 1px solid var(--sidebar-border);
+    display: flex;
+    justify-content: space-between;
+}
+
+.uv-content {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+}
+
+.uv-sources-view,
+.uv-entities-view,
+.uv-relationships-view {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    overflow: auto;
+    display: none;
+}
+
+.uv-content > div.active {
+    display: block;
+}
+
+.uv-source-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 20px;
+    padding: 20px;
+}
+
+.uv-source-item {
+    position: relative;
+    background-color: #fff;
+    border: 1px solid var(--sidebar-border);
+    border-radius: 5px;
+    padding: 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.uv-source-item:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+
+.uv-source-badge {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background-color: rgba(0,0,0,0.1);
+    color: #333;
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-size: 0.75rem;
+}
+
+.uv-source-icon {
+    font-size: 2rem;
+    margin-bottom: 10px;
+}
+
+.uv-source-icon-small {
+    display: inline-flex;
+    width: 20px;
+    height: 20px;
+    align-items: center;
+    justify-content: center;
+    margin-right: 5px;
+}
+
+.uv-source-name {
+    font-weight: 500;
+    margin-bottom: 5px;
+}
+
+.uv-source-type {
+    color: #666;
+    font-size: 0.9rem;
+}
+
+.uv-entity-table-container {
+    padding: 15px;
+}
+
+.uv-entity-type-icon {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    margin-right: 5px;
+}
+
+.entity-property-pill {
+    display: inline-block;
+    background-color: #f8f9fa;
+    padding: 2px 6px;
+    border-radius: 10px;
+    margin-right: 5px;
+    font-size: 0.85rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 150px;
+}
+
+.badge-source {
+    display: inline-block;
+    padding: 3px 6px;
+    border-radius: 3px;
+    color: white;
+    font-size: 0.85rem;
+}
+
+.uv-relationship-matrix {
+    padding: 15px;
+    overflow: auto;
+}
+
+.uv-relationship-detail {
+    position: absolute;
+    right: 20px;
+    top: 20px;
+    width: 400px;
+    background-color: #fff;
+    border: 1px solid var(--sidebar-border);
+    border-radius: 5px;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+    z-index: 50;
+}
+
+.uv-status-bar {
+    padding: 8px 15px;
+    background-color: #f8f9fa;
+    border-top: 1px solid var(--sidebar-border);
+    display: flex;
+    justify-content: space-between;
+}
+
+.filter-section {
+    margin-bottom: 15px;
+}
+
+.filter-section h6 {
+    margin-bottom: 8px;
+    font-weight: 600;
+}
+
+.filter-checkboxes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.filter-checkboxes .form-check {
+    flex-basis: 48%;
+    margin: 0;
+}
