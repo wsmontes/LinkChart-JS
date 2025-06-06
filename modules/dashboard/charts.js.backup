@@ -1,0 +1,1372 @@
+// Dashboard Charts Submodule
+// Handles chart rendering, chart builder UI, visual query builder, and advanced visualizations
+
+import { registerChartForExport, exportDashboardAsPDF } from './exportImage.js';
+import { showFieldPicker } from './fieldPicker.js';
+
+let dashboardData = null;
+let chartInstances = {};
+
+// Main dashboard rendering function
+export function renderDashboard(data) {
+  if (!data) return;
+  
+  dashboardData = data;
+  const { nodes, edges } = data;
+  
+  // Clear existing charts
+  clearCharts();
+  
+  // Render basic statistics
+  renderStatistics(nodes, edges);
+  
+  // Render tab-based charts
+  renderTabCharts(nodes, edges);
+  
+  // Enable chart builder and export functionality
+  enableChartBuilder(data);
+  enableExportFunctionality();
+}
+
+// Render charts in dashboard tabs
+function renderTabCharts(nodes, edges) {
+  // Initialize tab event listeners
+  initializeTabHandlers();
+  
+  // Render charts for each tab
+  renderTimelineTab(nodes);
+  renderBarTab(nodes, edges);
+  renderScatterTab(nodes);
+  
+  // Set default active tab
+  showActiveTabChart();
+}
+
+// Initialize tab change handlers
+function initializeTabHandlers() {
+  const tabButtons = document.querySelectorAll('#chartTabs button[data-bs-toggle="tab"]');
+  
+  tabButtons.forEach(button => {
+    button.addEventListener('shown.bs.tab', (e) => {
+      const targetTab = e.target.getAttribute('data-bs-target');
+      
+      // Resize charts when tab becomes visible
+      setTimeout(() => {
+        resizeChartsInTab(targetTab);
+      }, 100);
+    });
+  });
+}
+
+// Render timeline chart in timeline tab
+function renderTimelineTab(nodes) {
+  const canvas = document.getElementById('timelineChart');
+  if (!canvas) return;
+  
+  // Extract date information
+  const datedNodes = nodes.filter(node => node.date || node.timestamp || node.created_at);
+  if (datedNodes.length === 0) {
+    const container = canvas.parentElement;
+    container.innerHTML = `
+      <div class="text-center p-4">
+        <i class="fas fa-clock fa-3x text-muted mb-3"></i>
+        <p class="text-muted">No temporal data available</p>
+        <small>Nodes need date, timestamp, or created_at fields</small>
+      </div>
+    `;
+    return;
+  }
+  
+  const timeGroups = {};
+  datedNodes.forEach(node => {
+    const dateValue = node.date || node.timestamp || node.created_at;
+    const date = new Date(dateValue);
+    if (!isNaN(date.getTime())) {
+      const monthKey = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`;
+      timeGroups[monthKey] = (timeGroups[monthKey] || 0) + 1;
+    }
+  });
+  
+  const sortedDates = Object.keys(timeGroups).sort();
+  const ctx = canvas.getContext('2d');
+  
+  // Destroy existing chart if it exists
+  if (chartInstances.timeline) {
+    chartInstances.timeline.destroy();
+  }
+  
+  const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+  gradient.addColorStop(0, 'rgba(102, 126, 234, 0.8)');
+  gradient.addColorStop(1, 'rgba(118, 75, 162, 0.1)');
+  
+  const chart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: sortedDates,
+      datasets: [{
+        label: 'Activity Over Time',
+        data: sortedDates.map(date => timeGroups[date]),
+        borderColor: '#667eea',
+        backgroundColor: gradient,
+        borderWidth: 3,
+        fill: true,
+        tension: 0.4,
+        pointBackgroundColor: '#667eea',
+        pointBorderColor: '#fff',
+        pointBorderWidth: 2,
+        pointRadius: 6,
+        pointHoverRadius: 8
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: true,
+          position: 'top'
+        },
+        tooltip: {
+          mode: 'index',
+          intersect: false,
+          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          titleColor: '#fff',
+          bodyColor: '#fff',
+          borderColor: '#667eea',
+          borderWidth: 1
+        }
+      },
+      scales: {
+        x: {
+          display: true,
+          title: {
+            display: true,
+            text: 'Time Period'
+          },
+          grid: {
+            color: 'rgba(0, 0, 0, 0.1)'
+          }
+        },
+        y: {
+          display: true,
+          title: {
+            display: true,
+            text: 'Activity Count'
+          },
+          beginAtZero: true,
+          grid: {
+            color: 'rgba(0, 0, 0, 0.1)'
+          }
+        }
+      },
+      interaction: {
+        mode: 'nearest',
+        axis: 'x',
+        intersect: false
+      },
+      animation: {
+        duration: 1000,
+        easing: 'easeInOutQuart'
+      }
+    }
+  });
+  
+  chartInstances.timeline = chart;
+  registerChartForExport('timelineChart', chart);
+}
+
+// Render bar chart in bar tab
+function renderBarTab(nodes, edges) {
+  const canvas = document.getElementById('barChart');
+  if (!canvas) return;
+  
+  // Create entity type distribution chart
+  const entityTypes = {};
+  nodes.forEach(node => {
+    const type = node.type || node.category || 'Unknown';
+    entityTypes[type] = (entityTypes[type] || 0) + 1;
+  });
+  
+  if (Object.keys(entityTypes).length === 0) {
+    const container = canvas.parentElement;
+    container.innerHTML = `
+      <div class="text-center p-4">
+        <i class="fas fa-chart-bar fa-3x text-muted mb-3"></i>
+        <p class="text-muted">No data available for bar chart</p>
+      </div>
+    `;
+    return;
+  }
+  
+  const ctx = canvas.getContext('2d');
+  
+  // Destroy existing chart if it exists
+  if (chartInstances.bar) {
+    chartInstances.bar.destroy();
+  }
+  
+  const colors = [
+    '#667eea', '#764ba2', '#f093fb', '#f5576c', '#4facfe',
+    '#43e97b', '#fa709a', '#fee140', '#a8edea', '#d299c2'
+  ];
+  
+  const chart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: Object.keys(entityTypes),
+      datasets: [{
+        label: 'Entity Count',
+        data: Object.values(entityTypes),
+        backgroundColor: colors.slice(0, Object.keys(entityTypes).length),
+        borderColor: colors.slice(0, Object.keys(entityTypes).length).map(color => color + 'FF'),
+        borderWidth: 2,
+        borderRadius: 8,
+        borderSkipped: false
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: false
+        },
+        tooltip: {
+          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          titleColor: '#fff',
+          bodyColor: '#fff',
+          borderColor: '#667eea',
+          borderWidth: 1
+        }
+      },
+      scales: {
+        x: {
+          display: true,
+          title: {
+            display: true,
+            text: 'Entity Types'
+          },
+          grid: {
+            display: false
+          }
+        },
+        y: {
+          display: true,
+          title: {
+            display: true,
+            text: 'Count'
+          },
+          beginAtZero: true,
+          grid: {
+            color: 'rgba(0, 0, 0, 0.1)'
+          }
+        }
+      },
+      animation: {
+        duration: 1000,
+        easing: 'easeInOutQuart'
+      }
+    }
+  });
+  
+  chartInstances.bar = chart;
+  registerChartForExport('barChart', chart);
+}
+
+// Render scatter chart in scatter tab
+function renderScatterTab(nodes) {
+  const canvas = document.getElementById('scatterChart');
+  if (!canvas) return;
+  
+  // Try to find numeric fields for scatter plot
+  const numericFields = findNumericFields(nodes);
+  
+  if (numericFields.length < 2) {
+    const container = canvas.parentElement;
+    container.innerHTML = `
+      <div class="text-center p-4">
+        <i class="fas fa-chart-scatter fa-3x text-muted mb-3"></i>
+        <p class="text-muted">Insufficient numeric data for scatter plot</p>
+        <small>Need at least 2 numeric fields</small>
+        <div class="mt-3">
+          <button class="btn btn-primary btn-sm" onclick="showCustomChartBuilder()">
+            <i class="fas fa-plus me-1"></i>Create Custom Chart
+          </button>
+        </div>
+      </div>
+    `;
+    return;
+  }
+  
+  // Use first two numeric fields
+  const xField = numericFields[0];
+  const yField = numericFields[1];
+  
+  const scatterData = nodes
+    .filter(node => node[xField] !== undefined && node[yField] !== undefined)
+    .map(node => ({
+      x: parseFloat(node[xField]) || 0,
+      y: parseFloat(node[yField]) || 0,
+      label: node.name || node.id || 'Unknown'
+    }));
+  
+  const ctx = canvas.getContext('2d');
+  
+  // Destroy existing chart if it exists
+  if (chartInstances.scatter) {
+    chartInstances.scatter.destroy();
+  }
+  
+  const chart = new Chart(ctx, {
+    type: 'scatter',
+    data: {
+      datasets: [{
+        label: `${xField} vs ${yField}`,
+        data: scatterData,
+        backgroundColor: 'rgba(102, 126, 234, 0.6)',
+        borderColor: '#667eea',
+        borderWidth: 2,
+        pointRadius: 6,
+        pointHoverRadius: 8
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: true,
+          position: 'top'
+        },
+        tooltip: {
+          callbacks: {
+            title: function(context) {
+              return context[0].raw.label || 'Data Point';
+            },
+            label: function(context) {
+              return `${xField}: ${context.raw.x}, ${yField}: ${context.raw.y}`;
+            }
+          },
+          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          titleColor: '#fff',
+          bodyColor: '#fff',
+          borderColor: '#667eea',
+          borderWidth: 1
+        }
+      },
+      scales: {
+        x: {
+          type: 'linear',
+          display: true,
+          title: {
+            display: true,
+            text: xField
+          },
+          grid: {
+            color: 'rgba(0, 0, 0, 0.1)'
+          }
+        },
+        y: {
+          display: true,
+          title: {
+            display: true,
+            text: yField
+          },
+          grid: {
+            color: 'rgba(0, 0, 0, 0.1)'
+          }
+        }
+      },
+      animation: {
+        duration: 1000,
+        easing: 'easeInOutQuart'
+      }
+    }
+  });
+  
+// Statistics rendering function
+function renderStatistics(nodes, edges) {
+  const statsContainer = document.getElementById('dashboardStats');
+  if (!statsContainer) return;
+  
+  const entityTypes = {};
+  const edgeTypes = {};
+  
+  nodes.forEach(node => {
+    const type = node.type || 'Unknown';
+    entityTypes[type] = (entityTypes[type] || 0) + 1;
+  });
+  
+  edges.forEach(edge => {
+    const type = edge.label || 'Unknown';
+    edgeTypes[type] = (edgeTypes[type] || 0) + 1;
+  });
+  
+  statsContainer.innerHTML = `
+    <div class="row">
+      <div class="col-md-3">
+        <div class="card bg-primary text-white">
+          <div class="card-body">
+            <h5 class="card-title">${nodes.length}</h5>
+            <p class="card-text">Total Entities</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card bg-success text-white">
+          <div class="card-body">
+            <h5 class="card-title">${edges.length}</h5>
+            <p class="card-text">Total Connections</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card bg-info text-white">
+          <div class="card-body">
+            <h5 class="card-title">${Object.keys(entityTypes).length}</h5>
+            <p class="card-text">Entity Types</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card bg-warning text-white">
+          <div class="card-body">
+            <h5 class="card-title">${Object.keys(edgeTypes).length}</h5>
+            <p class="card-text">Relation Types</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderEntityTypeChart(nodes) {
+  const container = document.getElementById('entityTypeChart');
+  if (!container) return;
+  
+  const entityTypes = {};
+  nodes.forEach(node => {
+    const type = node.type || 'Unknown';
+    entityTypes[type] = (entityTypes[type] || 0) + 1;
+  });
+  
+  // Create chart container
+  container.innerHTML = `
+    <canvas id="entityTypeCanvas" width="400" height="200"></canvas>
+    <div class="mt-2">
+      ${Object.entries(entityTypes).map(([type, count]) => `
+        <span class="badge bg-secondary me-2">${type}: ${count}</span>
+      `).join('')}
+    </div>
+  `;
+  
+  // Create actual Chart.js chart
+  const canvas = document.getElementById('entityTypeCanvas');
+  const ctx = canvas.getContext('2d');
+  
+  // Destroy existing chart if it exists
+  if (chartInstances.entityType && chartInstances.entityType.chart) {
+    chartInstances.entityType.chart.destroy();
+  }
+  
+  const colors = [
+    '#667eea', '#764ba2', '#f093fb', '#f5576c', '#4facfe',
+    '#43e97b', '#fa709a', '#fee140', '#a8edea', '#d299c2'
+  ];
+  
+  const chart = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: Object.keys(entityTypes),
+      datasets: [{
+        data: Object.values(entityTypes),
+        backgroundColor: colors.slice(0, Object.keys(entityTypes).length),
+        borderWidth: 2,
+        borderColor: '#fff'
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: {
+            padding: 15,
+            usePointStyle: true,
+            font: {
+              size: 12
+            }
+          }
+        },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              const total = context.dataset.data.reduce((a, b) => a + b, 0);
+              const percentage = ((context.raw / total) * 100).toFixed(1);
+              return `${context.label}: ${context.raw} (${percentage}%)`;
+            }
+          }
+        }
+      },
+      animation: {
+        animateScale: true,
+        animateRotate: true
+      }
+    }
+  });
+  
+  // Store chart instance for later reference
+  chartInstances.entityType = {
+    chart: chart,
+    type: 'doughnut',
+    data: entityTypes,
+    container: 'entityTypeCanvas'
+  };
+}
+
+function renderTimelineChart(nodes) {
+  const container = document.getElementById('timelineChart');
+  if (!container) return;
+  
+  // Extract date information
+  const datedNodes = nodes.filter(node => node.date);
+  if (datedNodes.length === 0) {
+    container.innerHTML = '<p class="text-muted">No temporal data available</p>';
+    return;
+  }
+  
+  const timeGroups = {};
+  datedNodes.forEach(node => {
+    const date = new Date(node.date);
+    const monthKey = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`;
+    timeGroups[monthKey] = (timeGroups[monthKey] || 0) + 1;
+  });
+  
+  const sortedDates = Object.keys(timeGroups).sort();
+  
+  container.innerHTML = `
+    <canvas id="timelineCanvas" width="400" height="200"></canvas>
+    <div class="mt-2 small">
+      <strong>Timeline:</strong> ${sortedDates[0]} to ${sortedDates[sortedDates.length - 1]}
+    </div>
+  `;
+  
+  // Create actual Chart.js chart
+  const canvas = document.getElementById('timelineCanvas');
+  const ctx = canvas.getContext('2d');
+  
+  // Destroy existing chart if it exists
+  if (chartInstances.timeline && chartInstances.timeline.chart) {
+    chartInstances.timeline.chart.destroy();
+  }
+  
+  const chart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: sortedDates,
+      datasets: [{
+        label: 'Activity Timeline',
+        data: sortedDates.map(date => timeGroups[date]),
+        borderColor: '#667eea',
+        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+        borderWidth: 3,
+        fill: true,
+        tension: 0.4,
+        pointBackgroundColor: '#667eea',
+        pointBorderColor: '#fff',
+        pointBorderWidth: 2,
+        pointRadius: 6,
+        pointHoverRadius: 8
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        y: {
+          beginAtZero: true,
+          grid: {
+            color: 'rgba(0, 0, 0, 0.1)'
+          },
+          ticks: {
+            stepSize: 1
+          }
+        },
+        x: {
+          grid: {
+            color: 'rgba(0, 0, 0, 0.1)'
+          }
+        }
+      },
+      plugins: {
+        legend: {
+          display: false
+        },
+        tooltip: {
+          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          titleColor: '#fff',
+          bodyColor: '#fff',
+          borderColor: '#667eea',
+          borderWidth: 1,
+          callbacks: {
+            title: function(context) {
+              return `Period: ${context[0].label}`;
+            },
+            label: function(context) {
+              return `Activities: ${context.raw}`;
+            }
+          }
+        }
+      },
+      animation: {
+        duration: 1000,
+        easing: 'easeInOutQuart'
+      },
+      interaction: {
+        intersect: false,
+        mode: 'index'
+      }
+    }
+  });
+  
+  chartInstances.timeline = {
+    chart: chart,
+    type: 'line',
+    data: timeGroups,
+    container: 'timelineCanvas'
+  };
+}
+
+function renderConnectionChart(edges) {
+  const container = document.getElementById('connectionChart');
+  if (!container) return;
+  
+  const connectionTypes = {};
+  edges.forEach(edge => {
+    const type = edge.label || 'Unknown';
+    connectionTypes[type] = (connectionTypes[type] || 0) + 1;
+  });
+  
+  container.innerHTML = `
+    <canvas id="connectionCanvas" width="400" height="200"></canvas>
+    <div class="mt-2">
+      ${Object.entries(connectionTypes).map(([type, count]) => `
+        <div class="d-flex justify-content-between">
+          <span>${type}:</span>
+          <span class="badge bg-primary">${count}</span>
+        </div>
+      `).join('')}
+    </div>
+  `;
+  
+  // Create actual Chart.js chart
+  const canvas = document.getElementById('connectionCanvas');
+  const ctx = canvas.getContext('2d');
+  
+  // Destroy existing chart if it exists
+  if (chartInstances.connection && chartInstances.connection.chart) {
+    chartInstances.connection.chart.destroy();
+  }
+  
+  const colors = [
+    '#667eea', '#764ba2', '#f093fb', '#f5576c', '#4facfe',
+    '#43e97b', '#fa709a', '#fee140', '#a8edea', '#d299c2'
+  ];
+  
+  const chart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: Object.keys(connectionTypes),
+      datasets: [{
+        label: 'Connection Types',
+        data: Object.values(connectionTypes),
+        backgroundColor: colors.slice(0, Object.keys(connectionTypes).length),
+        borderColor: colors.slice(0, Object.keys(connectionTypes).length),
+        borderWidth: 2,
+        borderRadius: 8,
+        borderSkipped: false
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        y: {
+          beginAtZero: true,
+          grid: {
+            color: 'rgba(0, 0, 0, 0.1)'
+          },
+          ticks: {
+            stepSize: 1
+          }
+        },
+        x: {
+          grid: {
+            display: false
+          },
+          ticks: {
+            maxRotation: 45,
+            minRotation: 0
+          }
+        }
+      },
+      plugins: {
+        legend: {
+          display: false
+        },
+        tooltip: {
+          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          titleColor: '#fff',
+          bodyColor: '#fff',
+          borderColor: '#667eea',
+          borderWidth: 1,
+          callbacks: {
+            title: function(context) {
+              return `Connection Type: ${context[0].label}`;
+            },
+            label: function(context) {
+              return `Count: ${context.raw}`;
+            }
+          }
+        }
+      },
+      animation: {
+        duration: 1000,
+        easing: 'easeInOutQuart'
+      }
+    }
+  });
+  
+  chartInstances.connection = {
+    chart: chart,
+    type: 'bar',
+    data: connectionTypes,
+    container: 'connectionCanvas'
+  };
+}
+
+function renderNetworkMetrics(nodes, edges) {
+  const container = document.getElementById('networkMetrics');
+  if (!container) return;
+  
+  // Calculate network metrics
+  const metrics = calculateNetworkMetrics(nodes, edges);
+  
+  container.innerHTML = `
+    <div class="row">
+      <div class="col-md-6">
+        <h6>Network Density</h6>
+        <div class="progress mb-3">
+          <div class="progress-bar" style="width: ${metrics.density * 100}%"></div>
+        </div>
+        <small class="text-muted">${(metrics.density * 100).toFixed(2)}%</small>
+      </div>
+      <div class="col-md-6">
+        <h6>Average Degree</h6>
+        <div class="progress mb-3">
+          <div class="progress-bar bg-success" style="width: ${Math.min(metrics.avgDegree * 10, 100)}%"></div>
+        </div>
+        <small class="text-muted">${metrics.avgDegree.toFixed(2)}</small>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-md-4">
+        <div class="text-center">
+          <div class="h5 text-primary">${metrics.components}</div>
+          <small>Components</small>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="text-center">
+          <div class="h5 text-success">${metrics.maxDegree}</div>
+          <small>Max Degree</small>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="text-center">
+          <div class="h5 text-info">${metrics.isolatedNodes}</div>
+          <small>Isolated Nodes</small>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function calculateNetworkMetrics(nodes, edges) {
+  const nodeCount = nodes.length;
+  const edgeCount = edges.length;
+  
+  // Calculate degree for each node
+  const degrees = {};
+  nodes.forEach(node => degrees[node.id] = 0);
+  
+  edges.forEach(edge => {
+    if (degrees[edge.from] !== undefined) degrees[edge.from]++;
+    if (degrees[edge.to] !== undefined) degrees[edge.to]++;
+  });
+  
+  const degreeValues = Object.values(degrees);
+  const avgDegree = degreeValues.reduce((sum, d) => sum + d, 0) / nodeCount;
+  const maxDegree = Math.max(...degreeValues);
+  const isolatedNodes = degreeValues.filter(d => d === 0).length;
+  
+  // Network density
+  const maxPossibleEdges = nodeCount * (nodeCount - 1) / 2;
+  const density = maxPossibleEdges > 0 ? edgeCount / maxPossibleEdges : 0;
+  
+  // Simple component count (connected components)
+  const components = calculateComponents(nodes, edges);
+  
+  return {
+    density,
+    avgDegree,
+    maxDegree,
+    isolatedNodes,
+    components
+  };
+}
+
+function calculateComponents(nodes, edges) {
+  const visited = new Set();
+  let componentCount = 0;
+  
+  // Build adjacency list
+  const adjacency = {};
+  nodes.forEach(node => adjacency[node.id] = []);
+  edges.forEach(edge => {
+    if (adjacency[edge.from]) adjacency[edge.from].push(edge.to);
+    if (adjacency[edge.to]) adjacency[edge.to].push(edge.from);
+  });
+  
+  // DFS to find components
+  function dfs(nodeId) {
+    if (visited.has(nodeId)) return;
+    visited.add(nodeId);
+    
+    if (adjacency[nodeId]) {
+      adjacency[nodeId].forEach(neighbor => dfs(neighbor));
+    }
+  }
+  
+  nodes.forEach(node => {
+    if (!visited.has(node.id)) {
+      dfs(node.id);
+      componentCount++;
+    }
+  });
+  
+  return componentCount;
+}
+
+// Advanced chart builder UI
+export function showChartBuilderUI(fields, onBuild) {
+  const existingModal = document.getElementById('chartBuilderModal');
+  if (existingModal) existingModal.remove();
+  
+  const modal = document.createElement('div');
+  modal.className = 'modal fade';
+  modal.id = 'chartBuilderModal';
+  modal.innerHTML = `
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">
+            <i class="fas fa-chart-bar"></i> Chart Builder
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <form id="chartBuilderForm">
+            <div class="row">
+              <div class="col-md-6">
+                <div class="mb-3">
+                  <label class="form-label">Chart Type</label>
+                  <select class="form-select" id="chartType" required>
+                    <option value="">Select chart type...</option>
+                    <option value="bar">Bar Chart</option>
+                    <option value="line">Line Chart</option>
+                    <option value="pie">Pie Chart</option>
+                    <option value="doughnut">Doughnut Chart</option>
+                    <option value="scatter">Scatter Plot</option>
+                    <option value="area">Area Chart</option>
+                    <option value="histogram">Histogram</option>
+                    <option value="heatmap">Heatmap</option>
+                  </select>
+                </div>
+                
+                <div class="mb-3">
+                  <label class="form-label">X-Axis Field</label>
+                  <select class="form-select" id="xAxisField" required>
+                    <option value="">Select field...</option>
+                    ${fields.map(field => `<option value="${field}">${field}</option>`).join('')}
+                  </select>
+                </div>
+                
+                <div class="mb-3">
+                  <label class="form-label">Y-Axis Field</label>
+                  <select class="form-select" id="yAxisField">
+                    <option value="">Select field...</option>
+                    <option value="count">Count</option>
+                    ${fields.map(field => `<option value="${field}">${field}</option>`).join('')}
+                  </select>
+                </div>
+                
+                <div class="mb-3">
+                  <label class="form-label">Group By (Optional)</label>
+                  <select class="form-select" id="groupByField">
+                    <option value="">No grouping</option>
+                    ${fields.map(field => `<option value="${field}">${field}</option>`).join('')}
+                  </select>
+                </div>
+              </div>
+              
+              <div class="col-md-6">
+                <div class="mb-3">
+                  <label class="form-label">Aggregation</label>
+                  <select class="form-select" id="aggregation">
+                    <option value="count">Count</option>
+                    <option value="sum">Sum</option>
+                    <option value="avg">Average</option>
+                    <option value="min">Minimum</option>
+                    <option value="max">Maximum</option>
+                  </select>
+                </div>
+                
+                <div class="mb-3">
+                  <label class="form-label">Chart Title</label>
+                  <input type="text" class="form-control" id="chartTitle" placeholder="Enter chart title">
+                </div>
+                
+                <div class="mb-3">
+                  <label class="form-label">Color Scheme</label>
+                  <select class="form-select" id="colorScheme">
+                    <option value="default">Default</option>
+                    <option value="viridis">Viridis</option>
+                    <option value="plasma">Plasma</option>
+                    <option value="cool">Cool</option>
+                    <option value="warm">Warm</option>
+                  </select>
+                </div>
+                
+                <div class="form-check mb-3">
+                  <input class="form-check-input" type="checkbox" id="showLegend" checked>
+                  <label class="form-check-label" for="showLegend">
+                    Show Legend
+                  </label>
+                </div>
+                
+                <div class="form-check mb-3">
+                  <input class="form-check-input" type="checkbox" id="showGridlines" checked>
+                  <label class="form-check-label" for="showGridlines">
+                    Show Gridlines
+                  </label>
+                </div>
+              </div>
+            </div>
+            
+            <div class="row">
+              <div class="col-12">
+                <h6>Preview</h6>
+                <div id="chartPreview" style="height: 300px; border: 1px solid #dee2e6; border-radius: 0.375rem;">
+                  <div class="d-flex justify-content-center align-items-center h-100 text-muted">
+                    Configure chart options to see preview
+                  </div>
+                </div>
+              </div>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-outline-primary" id="previewChart">Preview</button>
+          <button type="button" class="btn btn-primary" id="createChart">Create Chart</button>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  document.body.appendChild(modal);
+  const bsModal = new bootstrap.Modal(modal);
+  bsModal.show();
+  
+  // Set up event listeners
+  setupChartBuilderEvents(onBuild);
+  
+  modal.addEventListener('hidden.bs.modal', () => modal.remove());
+}
+
+function setupChartBuilderEvents(onBuild) {
+  // Preview button
+  document.getElementById('previewChart')?.addEventListener('click', () => {
+    generateChartPreview();
+  });
+  
+  // Create button
+  document.getElementById('createChart')?.addEventListener('click', () => {
+    const config = getChartConfiguration();
+    if (config && onBuild) {
+      onBuild(config);
+      bootstrap.Modal.getInstance(document.getElementById('chartBuilderModal')).hide();
+    }
+  });
+  
+  // Real-time preview on field changes
+  ['chartType', 'xAxisField', 'yAxisField', 'groupByField'].forEach(fieldId => {
+    document.getElementById(fieldId)?.addEventListener('change', () => {
+      setTimeout(generateChartPreview, 100);
+    });
+  });
+}
+
+function generateChartPreview() {
+  const config = getChartConfiguration();
+  if (!config) return;
+  
+  const preview = document.getElementById('chartPreview');
+  if (!preview) return;
+  
+  // Generate mock preview
+  preview.innerHTML = `
+    <div class="d-flex justify-content-center align-items-center h-100">
+      <div class="text-center">
+        <i class="fas fa-chart-${config.type === 'line' ? 'line' : 'bar'} fa-3x text-primary mb-2"></i>
+        <div><strong>${config.title || 'Chart Preview'}</strong></div>
+        <div class="small text-muted">${config.type} • ${config.xAxis} vs ${config.yAxis}</div>
+      </div>
+    </div>
+  `;
+}
+
+function getChartConfiguration() {
+  const form = document.getElementById('chartBuilderForm');
+  if (!form) return null;
+  
+  const formData = new FormData(form);
+  const config = {
+    type: document.getElementById('chartType').value,
+    xAxis: document.getElementById('xAxisField').value,
+    yAxis: document.getElementById('yAxisField').value || 'count',
+    groupBy: document.getElementById('groupByField').value,
+    aggregation: document.getElementById('aggregation').value,
+    title: document.getElementById('chartTitle').value,
+    colorScheme: document.getElementById('colorScheme').value,
+    showLegend: document.getElementById('showLegend').checked,
+    showGridlines: document.getElementById('showGridlines').checked
+  };
+  
+  if (!config.type || !config.xAxis) {
+    alert('Please select chart type and X-axis field');
+    return null;
+  }
+  
+  return config;
+}
+
+function enableChartBuilder(data) {
+  // Add chart builder button to dashboard
+  const container = document.getElementById('dashboardControls');
+  if (container && !document.getElementById('chartBuilderBtn')) {
+    const button = document.createElement('button');
+    button.id = 'chartBuilderBtn';
+    button.className = 'btn btn-outline-primary btn-sm';
+    button.innerHTML = '<i class="fas fa-plus"></i> Create Chart';
+    button.onclick = () => {
+      const fields = extractFields(data.nodes);
+      showChartBuilderUI(fields, (config) => {
+        createCustomChart(config, data);
+      });
+    };
+    container.appendChild(button);
+  }
+}
+
+function extractFields(nodes) {
+  const fields = new Set();
+  nodes.forEach(node => {
+    Object.keys(node).forEach(key => {
+      if (key !== 'id' && key !== 'coordinates') {
+        fields.add(key);
+      }
+    });
+  });
+  return Array.from(fields);
+}
+
+function createCustomChart(config, data) {
+  // Implementation for creating custom charts based on configuration
+  console.log('Creating custom chart:', config);
+  
+  if (!config || !data || !config.type || !config.xAxis) {
+    console.warn('Invalid chart configuration');
+    return;
+  }
+  
+  // Find available chart container
+  const availableContainers = ['barChart', 'scatterChart'];
+  let targetContainer = null;
+  
+  for (const containerId of availableContainers) {
+    const container = document.getElementById(containerId);
+    if (container) {
+      targetContainer = containerId;
+      break;
+    }
+  }
+  
+  if (!targetContainer) {
+    console.warn('No available chart container found');
+    return;
+  }
+  
+  const canvas = document.getElementById(targetContainer);
+  const ctx = canvas.getContext('2d');
+  
+  // Destroy existing chart if it exists
+  const chartKey = `custom_${targetContainer}`;
+  if (chartInstances[chartKey] && chartInstances[chartKey].chart) {
+    chartInstances[chartKey].chart.destroy();
+  }
+  
+  // Process data based on configuration
+  const chartData = processDataForChart(data.nodes, config);
+  
+  // Create chart based on type
+  const chart = new Chart(ctx, {
+    type: config.type,
+    data: chartData,
+    options: createChartOptions(config)
+  });
+  
+  // Store chart instance
+  chartInstances[chartKey] = {
+    chart: chart,
+    config: config,
+    container: targetContainer
+  };
+  
+  // Show success notification
+  if (window.uxManager) {
+    window.uxManager.showNotification(`${config.title || 'Custom chart'} created successfully!`, 'success');
+  }
+}
+
+// Utility functions for chart management
+
+// Find numeric fields in the dataset
+function findNumericFields(nodes) {
+  if (!nodes || nodes.length === 0) return [];
+  
+  const sample = nodes[0];
+  const numericFields = [];
+  
+  for (const [key, value] of Object.entries(sample)) {
+    if (typeof value === 'number' || (!isNaN(parseFloat(value)) && isFinite(value))) {
+      numericFields.push(key);
+    }
+  }
+  
+  return numericFields;
+}
+
+// Show active tab chart
+function showActiveTabChart() {
+  const activeTab = document.querySelector('#chartTabs .nav-link.active');
+  if (activeTab) {
+    const targetTab = activeTab.getAttribute('data-bs-target');
+    resizeChartsInTab(targetTab);
+  }
+}
+
+// Resize charts in specific tab
+function resizeChartsInTab(tabSelector) {
+  const tab = document.querySelector(tabSelector);
+  if (!tab) return;
+  
+  const canvasElements = tab.querySelectorAll('canvas');
+  canvasElements.forEach(canvas => {
+    const chartId = canvas.id.replace('Chart', '').replace('Canvas', '');
+    if (chartInstances[chartId]) {
+      chartInstances[chartId].resize();
+    }
+  });
+}
+
+// Enable export functionality
+function enableExportFunctionality() {
+  const exportButton = document.getElementById('exportPDF');
+  if (exportButton) {
+    exportButton.addEventListener('click', () => {
+      exportButton.disabled = true;
+      exportButton.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Exporting...';
+      
+      exportDashboardAsPDF()
+        .then(() => {
+          exportButton.disabled = false;
+          exportButton.innerHTML = '<i class="fa fa-file-export me-1"></i>Export Report (PDF)';
+          
+          // Show success message
+          showNotification('PDF report exported successfully!', 'success');
+        })
+        .catch((error) => {
+          console.error('Export failed:', error);
+          exportButton.disabled = false;
+          exportButton.innerHTML = '<i class="fa fa-file-export me-1"></i>Export Report (PDF)';
+          
+          // Show error message
+          showNotification('Failed to export PDF report', 'error');
+        });
+    });
+  }
+}
+
+// Show notification message
+function showNotification(message, type = 'info') {
+  // Create notification element
+  const notification = document.createElement('div');
+  notification.className = `alert alert-${type === 'success' ? 'success' : type === 'error' ? 'danger' : 'info'} alert-dismissible fade show position-fixed`;
+  notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+  notification.innerHTML = `
+    ${message}
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+  `;
+  
+  document.body.appendChild(notification);
+  
+  // Auto-remove after 5 seconds
+  setTimeout(() => {
+    if (notification.parentNode) {
+      notification.parentNode.removeChild(notification);
+    }
+  }, 5000);
+}
+
+// Global function for custom chart builder (accessible from HTML)
+window.showCustomChartBuilder = function() {
+  if (!dashboardData) {
+    showNotification('No data available for chart creation', 'error');
+    return;
+  }
+  
+  const nodes = dashboardData.nodes || [];
+  if (nodes.length === 0) {
+    showNotification('No node data available', 'error');
+    return;
+  }
+  
+  // Extract field names from the first node
+  const fields = Object.keys(nodes[0] || {});
+  
+  showFieldPicker(fields, (config) => {
+    createCustomChartFromConfig(config);
+  }, {
+    title: 'Create Custom Chart',
+    chartTypes: ['bar', 'line', 'pie', 'doughnut', 'scatter'],
+    allowMultiSelect: false,
+    showAggregation: true,
+    showGrouping: true
+  });
+};
+
+// Create custom chart from configuration
+function createCustomChartFromConfig(config) {
+  const { chartType, xAxisField, yAxisField, aggregationType, groupByField, chartTitle, colorScheme, showLegend, enableAnimation } = config;
+  
+  // Find a suitable container or create one
+  const customContainer = document.getElementById('customChartContainer') || createCustomChartContainer();
+  
+  // Clear existing custom chart
+  customContainer.innerHTML = `<canvas id="customChart" width="400" height="300"></canvas>`;
+  
+  const canvas = document.getElementById('customChart');
+  const ctx = canvas.getContext('2d');
+  
+  // Process data for the chart
+  const processedData = processDataForChart(dashboardData.nodes, config);
+  
+  // Create chart
+  const chart = new Chart(ctx, {
+    type: chartType,
+    data: processedData,
+    options: createChartOptions(config)
+  });
+  
+  // Register for export
+  chartInstances.custom = chart;
+  registerChartForExport('customChart', chart);
+  
+  // Show success message
+  showNotification(`${chartTitle} created successfully!`, 'success');
+}
+
+// Create custom chart container if it doesn't exist
+function createCustomChartContainer() {
+  const container = document.createElement('div');
+  container.id = 'customChartContainer';
+  container.className = 'mt-3 p-3';
+  container.style.cssText = 'background: rgba(255, 255, 255, 0.9); border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);';
+  
+  // Insert after the dashboard tabs
+  const dashboardTabs = document.getElementById('dashboardTabs');
+  if (dashboardTabs && dashboardTabs.parentNode) {
+    dashboardTabs.parentNode.insertBefore(container, dashboardTabs.nextSibling);
+  }
+  
+  return container;
+}
+
+// Statistics rendering function
+function renderStatistics(nodes, edges) {
+  const statsContainer = document.getElementById('dashboardStats');
+  if (!statsContainer) return;
+  
+  const entityTypes = {};
+  const edgeTypes = {};
+  
+  nodes.forEach(node => {
+    const type = node.type || 'Unknown';
+    entityTypes[type] = (entityTypes[type] || 0) + 1;
+  });
+  
+  edges.forEach(edge => {
+    const type = edge.label || 'Unknown';
+    edgeTypes[type] = (edgeTypes[type] || 0) + 1;
+  });
+  
+  statsContainer.innerHTML = `
+    <div class="row">
+      <div class="col-md-3">
+        <div class="card bg-primary text-white">
+          <div class="card-body">
+            <h5 class="card-title">${nodes.length}</h5>
+            <p class="card-text">Total Entities</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card bg-success text-white">
+          <div class="card-body">
+            <h5 class="card-title">${edges.length}</h5>
+            <p class="card-text">Total Connections</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card bg-info text-white">
+          <div class="card-body">
+            <h5 class="card-title">${Object.keys(entityTypes).length}</h5>
+            <p class="card-text">Entity Types</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card bg-warning text-white">
+          <div class="card-body">
+            <h5 class="card-title">${Object.keys(edgeTypes).length}</h5>
+            <p class="card-text">Relation Types</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}

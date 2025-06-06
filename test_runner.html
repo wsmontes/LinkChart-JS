@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>LinkChart Test Runner</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-controls { margin-bottom: 20px; }
+        .btn { padding: 10px 20px; margin: 5px; border: none; cursor: pointer; border-radius: 5px; }
+        .btn-primary { background: #007bff; color: white; }
+        .btn-success { background: #28a745; color: white; }
+        .log-output { background: #f8f9fa; border: 1px solid #ddd; padding: 15px; height: 400px; overflow-y: auto; font-family: monospace; }
+    </style>
+</head>
+<body>
+    <h1>LinkChart E2E Test Runner</h1>
+    
+    <div class="test-controls">
+        <button class="btn btn-primary" onclick="openMainApp()">Open Main Application</button>
+        <button class="btn btn-success" onclick="runQuickTest()">Run Quick Test</button>
+        <button class="btn btn-success" onclick="runFullTestSuite()">Run Full Test Suite</button>
+    </div>
+    
+    <div class="log-output" id="logOutput">
+        Click "Open Main Application" to test the LinkChart platform, or run tests here.
+    </div>
+
+    <script>
+        function log(message, type = 'info') {
+            const output = document.getElementById('logOutput');
+            const timestamp = new Date().toLocaleTimeString();
+            const color = type === 'error' ? 'red' : type === 'success' ? 'green' : 'black';
+            output.innerHTML += `<div style="color: ${color}">[${timestamp}] ${message}</div>`;
+            output.scrollTop = output.scrollHeight;
+        }
+
+        function openMainApp() {
+            log('Opening main LinkChart application...');
+            window.open('http://localhost:8002', '_blank');
+        }
+
+        function runQuickTest() {
+            log('Running quick connectivity test...');
+            
+            fetch('http://localhost:8002')
+                .then(response => {
+                    if (response.ok) {
+                        log('✅ Server is responding correctly', 'success');
+                        return response.text();
+                    }
+                    throw new Error(`Server responded with status: ${response.status}`);
+                })
+                .then(html => {
+                    if (html.includes('LinkChart')) {
+                        log('✅ Main application HTML loaded successfully', 'success');
+                    } else {
+                        log('⚠️ HTML loaded but LinkChart content not found', 'error');
+                    }
+                })
+                .catch(error => {
+                    log(`❌ Error connecting to server: ${error.message}`, 'error');
+                });
+        }
+
+        async function runFullTestSuite() {
+            log('Starting full test suite execution...');
+            log('Note: This will open the main application and run automated tests');
+            
+            try {
+                // Open main app in new window
+                const testWindow = window.open('http://localhost:8002', '_blank');
+                
+                if (!testWindow) {
+                    log('❌ Failed to open test window. Please check popup blocker.', 'error');
+                    return;
+                }
+
+                log('✅ Test window opened');
+                log('⏳ Waiting for application to load...');
+
+                // Wait for the app to load and then run tests
+                setTimeout(async () => {
+                    try {
+                        // Check if test suite is available in the opened window
+                        if (testWindow.LinkChartTestSuite) {
+                            log('✅ Test suite found in application window', 'success');
+                            
+                            const tester = new testWindow.LinkChartTestSuite();
+                            log('🚀 Starting comprehensive test suite...');
+                            
+                            const results = await tester.runAllTests();
+                            
+                            log(`\n📊 Test Results Summary:`);
+                            log(`✅ Passed: ${results.passed}/${results.total} phases`);
+                            
+                            if (results.success) {
+                                log('🎉 ALL TESTS PASSED!', 'success');
+                            } else {
+                                log(`⚠️ Some tests failed. Check browser console for details.`, 'error');
+                            }
+                            
+                            // Generate detailed report
+                            const report = tester.generateReport();
+                            log('📋 Detailed report generated in browser console');
+                            
+                        } else {
+                            log('❌ Test suite not found in application window', 'error');
+                            log('Make sure the application has loaded completely');
+                        }
+                    } catch (error) {
+                        log(`❌ Error running test suite: ${error.message}`, 'error');
+                    }
+                }, 5000); // Wait 5 seconds for app to load
+                
+            } catch (error) {
+                log(`❌ Error in test execution: ${error.message}`, 'error');
+            }
+        }
+
+        // Initial connectivity check
+        window.onload = function() {
+            log('Test runner initialized');
+            log('Server URL: http://localhost:8002');
+            runQuickTest();
+        };
+    </script>
+</body>
+</html>

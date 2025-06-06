@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LinkChart Validation Test Runner</title>
+    <style>
+        body {
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            background: #1a1a1a;
+            color: #00ff41;
+            margin: 0;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: #000;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 0 20px rgba(0, 255, 65, 0.1);
+        }
+        h1 {
+            color: #00ff41;
+            text-align: center;
+            border-bottom: 2px solid #333;
+            padding-bottom: 10px;
+        }
+        .console-output {
+            background: #000;
+            border: 1px solid #333;
+            border-radius: 4px;
+            padding: 15px;
+            height: 600px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            font-size: 14px;
+        }
+        .controls {
+            margin: 20px 0;
+            text-align: center;
+        }
+        button {
+            background: #00ff41;
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            margin: 0 10px;
+        }
+        button:hover {
+            background: #00cc33;
+        }
+        .status {
+            text-align: center;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+        .iframe-container {
+            margin: 20px 0;
+            border: 2px solid #333;
+            border-radius: 4px;
+            height: 400px;
+        }
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔬 LinkChart Application Validation Test</h1>
+        
+        <div class="status" id="status">Ready to test application fixes...</div>
+        
+        <div class="controls">
+            <button onclick="loadApplication()">Load Main Application</button>
+            <button onclick="runValidationTests()">Run Validation Tests</button>
+            <button onclick="clearConsole()">Clear Console</button>
+            <button onclick="exportResults()">Export Results</button>
+        </div>
+        
+        <div class="iframe-container">
+            <iframe id="appFrame" src="about:blank" title="LinkChart Application"></iframe>
+        </div>
+        
+        <div class="console-output" id="console"></div>
+    </div>
+
+    <script>
+        let testResults = null;
+        let appLoaded = false;
+
+        // Console output capture
+        const consoleOutput = document.getElementById('console');
+        const originalLog = console.log;
+        const originalError = console.error;
+        const originalWarn = console.warn;
+
+        function addToConsole(message, type = 'log') {
+            const timestamp = new Date().toLocaleTimeString();
+            const prefix = type === 'error' ? '❌' : type === 'warn' ? '⚠️' : 'ℹ️';
+            consoleOutput.textContent += `[${timestamp}] ${prefix} ${message}\n`;
+            consoleOutput.scrollTop = consoleOutput.scrollHeight;
+        }
+
+        console.log = (...args) => {
+            originalLog.apply(console, args);
+            addToConsole(args.join(' '), 'log');
+        };
+
+        console.error = (...args) => {
+            originalError.apply(console, args);
+            addToConsole(args.join(' '), 'error');
+        };
+
+        console.warn = (...args) => {
+            originalWarn.apply(console, args);
+            addToConsole(args.join(' '), 'warn');
+        };
+
+        function updateStatus(message) {
+            document.getElementById('status').textContent = message;
+            console.log(message);
+        }
+
+        function loadApplication() {
+            updateStatus('Loading LinkChart application...');
+            const iframe = document.getElementById('appFrame');
+            iframe.src = 'http://localhost:8002/';
+            
+            iframe.onload = function() {
+                appLoaded = true;
+                updateStatus('✅ Application loaded successfully');
+                
+                // Wait a moment then run automatic validation
+                setTimeout(() => {
+                    updateStatus('Running automatic validation tests...');
+                    runValidationTestsInFrame();
+                }, 2000);
+            };
+            
+            iframe.onerror = function() {
+                updateStatus('❌ Failed to load application');
+            };
+        }
+
+        function runValidationTests() {
+            if (!appLoaded) {
+                updateStatus('⚠️ Please load the application first');
+                return;
+            }
+            
+            runValidationTestsInFrame();
+        }
+
+        function runValidationTestsInFrame() {
+            try {
+                const iframe = document.getElementById('appFrame');
+                const iframeWindow = iframe.contentWindow;
+                
+                // Check if validation function exists in iframe
+                if (iframeWindow && typeof iframeWindow.runValidationTests === 'function') {
+                    updateStatus('🔬 Running validation tests in application context...');
+                    iframeWindow.runValidationTests();
+                    
+                    // Check for results after a delay
+                    setTimeout(() => {
+                        if (iframeWindow.validationResults) {
+                            testResults = iframeWindow.validationResults;
+                            updateStatus(`✅ Validation complete - Success rate: ${testResults.successRate.toFixed(1)}%`);
+                            displayResults(testResults);
+                        } else {
+                            updateStatus('⚠️ Validation tests running, check console for details');
+                        }
+                    }, 8000);
+                } else {
+                    updateStatus('❌ Validation tests not available in application');
+                    console.error('runValidationTests function not found in iframe');
+                }
+            } catch (error) {
+                updateStatus('❌ Error running validation tests');
+                console.error('Validation test error:', error);
+            }
+        }
+
+        function displayResults(results) {
+            console.log('\n' + '='.repeat(50));
+            console.log('📋 VALIDATION TEST RESULTS SUMMARY');
+            console.log('='.repeat(50));
+            console.log(`📅 Timestamp: ${results.timestamp}`);
+            console.log(`⏱️ Duration: ${results.duration}ms`);
+            console.log(`📊 Success Rate: ${results.successRate.toFixed(1)}%`);
+            console.log('\n🔍 Individual Test Results:');
+            
+            Object.entries(results.results).forEach(([test, result]) => {
+                const emoji = getResultEmoji(result);
+                const testName = test.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+                console.log(`${emoji} ${testName}: ${result}`);
+            });
+            
+            if (results.successRate >= 80) {
+                console.log('\n🎉 OVERALL ASSESSMENT: VALIDATION PASSED');
+                console.log('✅ Application fixes are successful!');
+            } else if (results.successRate >= 60) {
+                console.log('\n⚠️ OVERALL ASSESSMENT: PARTIAL SUCCESS');
+                console.log('Some issues may remain, review individual test results');
+            } else {
+                console.log('\n❌ OVERALL ASSESSMENT: VALIDATION FAILED');
+                console.log('Critical issues need attention');
+            }
+        }
+
+        function getResultEmoji(result) {
+            switch (result) {
+                case 'PASS': return '✅';
+                case 'FAIL': return '❌';
+                case 'ERROR': return '💥';
+                case 'PARTIAL': return '⚠️';
+                default: return '❓';
+            }
+        }
+
+        function clearConsole() {
+            consoleOutput.textContent = '';
+            updateStatus('Console cleared');
+        }
+
+        function exportResults() {
+            if (!testResults) {
+                updateStatus('⚠️ No test results to export');
+                return;
+            }
+            
+            const exportData = {
+                ...testResults,
+                consoleLog: consoleOutput.textContent
+            };
+            
+            const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `linkgraph-validation-${new Date().toISOString().slice(0, 10)}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            updateStatus('✅ Results exported successfully');
+        }
+
+        // Initialize
+        updateStatus('🔧 Validation test runner ready');
+        console.log('🔬 LinkChart Validation Test Runner Initialized');
+        console.log('📋 Instructions:');
+        console.log('1. Click "Load Main Application" to load the LinkChart app');
+        console.log('2. Wait for automatic validation tests to run');
+        console.log('3. Review results in this console');
+        console.log('4. Export results if needed');
+    </script>
+</body>
+</html>

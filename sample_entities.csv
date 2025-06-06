@@ -1,0 +1,11 @@
+name,type,amount,date,location,category
+John Smith,Person,25000,2024-01-15,New York,Investigator
+Jane Doe,Person,18000,2024-02-20,Los Angeles,Suspect
+ACME Corp,Company,500000,2024-01-10,Chicago,Corporation
+BankFirst,Bank,2000000,2024-03-05,Miami,Financial
+Investigation Office,Agency,100000,2024-01-01,Washington,Government
+Property Alpha,Asset,750000,2024-02-15,Boston,Real Estate
+Vehicle XYZ,Vehicle,35000,2024-03-10,Denver,Transportation
+Account 12345,Account,125000,2024-01-20,Online,Financial
+Document Set A,Evidence,0,2024-02-25,New York,Legal
+Communication Log,Evidence,0,2024-03-15,Digital,Legal

@@ -1,0 +1,11 @@
+source,target,label,weight,date
+John Smith,ACME Corp,Employed By,1,2024-01-15
+Jane Doe,BankFirst,Account Holder,1,2024-02-20
+ACME Corp,Property Alpha,Owns,1,2024-02-15
+John Smith,Investigation Office,Works For,1,2024-01-01
+Jane Doe,Vehicle XYZ,Owns,1,2024-03-10
+BankFirst,Account 12345,Manages,1,2024-01-20
+Investigation Office,Document Set A,Collected,1,2024-02-25
+John Smith,Communication Log,Reviewed,1,2024-03-15
+Jane Doe,ACME Corp,Consultant,0.5,2024-02-01
+Property Alpha,BankFirst,Financed By,1,2024-02-16
